@@ -1,45 +1,9 @@
 
 
 #import "HPMapViewController.h"
-#include <stdlib.h>
 
-enum{
-    gkMessageHandoffInfo,
-    gkMessageNumHitInfo,
-    gkMessageHitPhotoInfo,
-    gkMessageToolbarHitInfo,
-    gkMessageQuestionCardHit,
-    gkMessageQuestionCardRight,
-    gkMessageQuestionCardWrong
-};
-
-typedef struct
-{
-    int nowPressedNumberTrs;
-} NumHitInfo;
-
-typedef struct
-{
-    int globalPressedPositionTrs;
-} HitPhotoInfo;
-
-typedef struct
-{
-    int toolbarPressedTrs;
-} ToolbarHitInfo;
-
-typedef struct
-{
-    int questionCardSelectedNumberTrs;
-} QuestionCardHitInfo;
-
-NumHitInfo numHitInfoMessage;
-HitPhotoInfo hitPhotoInfoMessage;
-ToolbarHitInfo toolbarHitInfoMessage;
-QuestionCardHitInfo questionCardHitInfoMessage;
 
 #define RADIANS(degrees) ((degrees * M_PI) / 180.0)
-
 
 @interface HPMapViewController ()
 
@@ -49,24 +13,10 @@ QuestionCardHitInfo questionCardHitInfoMessage;
 
 //button的listener
 - (IBAction)buttonHit_toolbar_function:(id)sender{
-    
-//    NSString *hello = @"hello ipad2";
-//    NSMutableData *data = [hello dataUsingEncoding:NSUTF8StringEncoding];
-//    [session sendDataToAllPeers:data withDataMode:GKSendDataReliable error:nil];
     UIButton *inputButton=(UIButton *)sender;
     NSLog(@"%d",inputButton.tag);
     
     UIButton *buttonTemp;
-    
-    
-    NSMutableData *data = [NSMutableData dataWithCapacity:1 + sizeof(ToolbarHitInfo)];
-    char messageType = gkMessageToolbarHitInfo;
-    [data appendBytes:&messageType length:1];
-    ToolbarHitInfo message;
-    message.toolbarPressedTrs = inputButton.tag;
-    [data appendBytes:&message length:sizeof(ToolbarHitInfo)];
-    [self sendData:data useSession:session];
-    
     
     switch (inputButton.tag) {
         case tag_button_toolbar_1_light:
@@ -92,7 +42,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         case tag_button_toolbar_0_map:
             switch (self.gameState) {
                 case gameState_photoDisplay:
-                    [self showPhoto:0];//把照片關掉ㄅ
+                    [self showPhoto:EXIT];//把照片關掉ㄅ
                     [self playerHandoff];//換人了
                     break;
                 case gameState_chanceDisplayOutside:
@@ -105,6 +55,12 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                     break;
                 case gameState_musicDisplayPlaying:
                     [self showMoiveAndMusic:movieAndMusicState_musicStop andSelectedView:UNIMPORTANT];
+                    [self playerHandoff];//換人了
+                    break;
+                case gameState_pogDisable:
+                case gameState_pogAvaliable:
+                    
+                    [self showPogAndSelectedView:EXIT];
                     [self playerHandoff];//換人了
                     break;
                 default:
@@ -156,108 +112,19 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         default:
             break;
     }
-
     
-}
-
-- (void)buttonHit_toolbar_functionFromRemote{
-    int pressedTag = toolbarHitInfoMessage.toolbarPressedTrs;
-    
-    switch (pressedTag) {
-        case tag_button_toolbar_1_light:
-            if (self.toolbarLightOn) {
-                self.toolbarLightOn=NO;
-            }else{
-                self.toolbarLightOn=YES;
-            }
-            break;
-        case tag_button_toolbar_3_music:
-            if (self.toolbarMusicOn) {
-                self.toolbarMusicOn=NO;
-            }else{
-                self.toolbarMusicOn=YES;
-            }
-            break;
-        case tag_button_toolbar_0_map:
-            switch (self.gameState) {
-                case gameState_photoDisplay:
-                    [self showPhoto:0];//把照片關掉ㄅ
-                    //其中一台handoff時會送同步訊號，所以這裡不用再handoff
-//                    [self playerHandoff];//換人了
-                    break;
-                case gameState_chanceDisplayOutside:
-                    [self showChance:EXIT andTarget:UNIMPORTANT];
-//                    [self playerHandoff];//換人了
-                    break;
-                case gameState_movieDisplayPlaying:
-                    [self showMoiveAndMusic:movieAndMusicState_movieStop andSelectedView:UNIMPORTANT];
-//                    [self playerHandoff];//換人了
-                    break;
-                case gameState_musicDisplayPlaying:
-                    [self showMoiveAndMusic:movieAndMusicState_musicStop andSelectedView:UNIMPORTANT];
-//                    [self playerHandoff];//換人了
-                    break;
-                default:
-                    break;
-            }
-            break;
-        case tag_button_toolbar_2_play:
-            switch (self.toolbarPlayerState) {
-                case playerStateType_prepared:
-                    if(self.movieOrMusicNow==movieOrMusic_movie){
-                        //$$廣播
-                        [self showMoiveAndMusic:movieAndMusicState_moviePlay andSelectedView:UNIMPORTANT];
-                    }else if(self.movieOrMusicNow==movieOrMusic_music){
-                        [self showMoiveAndMusic:movieAndMusicState_musicPlay andSelectedView:UNIMPORTANT];
-                    }
-                    break;
-                case playerStateType_play:
-                    self.toolbarPlayerState=playerStateType_pause;
-                    
-                    if(self.movieOrMusicNow==movieOrMusic_movie){
-                        //$$廣播
-                        [moviePlayer pause];
-                    }else if(self.movieOrMusicNow==movieOrMusic_music){
-                        [musicPlayer pause];
-                    }
-                    
-                    
-                    break;
-                case playerStateType_pause:
-                    self.toolbarPlayerState=playerStateType_play;
-                    if(self.movieOrMusicNow==movieOrMusic_movie){
-                        //$$廣播
-                        [moviePlayer play];
-                    }else if(self.movieOrMusicNow==movieOrMusic_music){
-                        [musicPlayer play];
-                    }
-                    break;
-                case playerStateType_none:
-                default:
-                    break;
-            }
-            break;
-        default:
-            break;
-    }
-
-}
--(void) button_toolbar_number_darkener{
-    int i;
-    UIButton *buttonTemp;
-    for(i=1;i<=6;i++){
-        buttonTemp=[self.button_toolbar_number objectAtIndex:i];
-        [buttonTemp setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"button_%d_dark",i]] forState:UIControlStateNormal];
-    }
-
 }
 - (IBAction)buttonHit_toolbar_number:(id)sender{
     UIButton *inputButton=(UIButton *)sender;
     NSLog(@"%d",inputButton.tag);
-    [self button_toolbar_number_darkener];
-    int nowPressedNumber=(inputButton.tag-tag_button_toolbar_number_1+1);
-    UIButton *buttonTemp;
     
+    UIButton *buttonTemp;
+    int i;
+    
+    [self button_toolbar_darkener];
+    
+    
+    int nowPressedNumber=(inputButton.tag-tag_button_toolbar_number_1+1);
     if (self.gameState==gameState_throwDice) {
         buttonTemp=[self.button_toolbar_number objectAtIndex:nowPressedNumber];
         [buttonTemp setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"button_%d_light",nowPressedNumber]] forState:UIControlStateNormal];
@@ -269,17 +136,109 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         [self resetAllIconInState:2 andFocusedPlayer:self.whoseTurn];
         
     }
-
-    
-    NSMutableData *data = [NSMutableData dataWithCapacity:1 + sizeof(NumHitInfo)];
-    char messageType = gkMessageNumHitInfo;
-    [data appendBytes:&messageType length:1];
-    NumHitInfo message;
-    message.nowPressedNumberTrs=nowPressedNumber;
-    [data appendBytes:&message length:sizeof(NumHitInfo)];
-    [self sendData:data useSession:session];
     
 }
+-(void)button_toolbar_darkener{
+    UIButton *buttonTemp;
+    int i;
+    
+    //先把所有的按鈕都變暗，之後把按到的變亮
+    for(i=1;i<=6;i++){
+        buttonTemp=[self.button_toolbar_number objectAtIndex:i];
+        [buttonTemp setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"button_%d_dark",i]] forState:UIControlStateNormal];
+    }
+    
+}
+
+- (IBAction)buttonHit_photo:(id)sender{
+    UIButton *inputButton=(UIButton *)sender;
+    NSLog(@"%d",inputButton.tag);
+    
+    //現在按到的photo，在0~11的position裡面的位置
+    int globalPressedPosition=inputButton.tag-tag_button_photo_0+self.viewNumber*3;
+    
+    //在gameState_throwDice時，使用者按到他應該按的photo時進入下一個state
+    //即「長輩把自己的棋子放到剛剛走到的地方」這個動作
+    HPPlayer *presentTurnPlayer=[self.playerList objectAtIndex:self.whoseTurn];
+    if(self.gameState==gameState_throwDice){
+        if(presentTurnPlayer.playerPosition==globalPressedPosition&&self.stepToGo!=0){//按對了棋子所在地，就把燈關掉。如果step是0代表還沒有按數字，也不能讓他動
+            [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];
+            self.gameState=gameState_moveForward;
+            [self stepToGoDisplay];
+        }
+    }else if(self.gameState==gameState_moveForward){
+        if((presentTurnPlayer.playerPosition+1)%12==globalPressedPosition){//成功前進
+            int j;
+            //以下是拿來測，下一步要站的地方有沒有人在，有人在的話那就繼續往下走
+            BOOL advanceMore=NO;
+            HPPlayer *comparePlayer;
+            for(j=0;j<self.playerNumber;j++){
+                comparePlayer=[self.playerList objectAtIndex:j];
+                if(j!=self.whoseTurn&&
+                   (comparePlayer.playerPosition==(presentTurnPlayer.playerPosition+1)%12)){
+                    advanceMore=YES;
+                }
+            }
+            if(!(advanceMore&&self.stepToGo==1)){//只有在剩下一步要走時，才會不扣掉剩下的步數
+                self.stepToGo=self.stepToGo-1;
+            }
+            if(self.stepToGo==0){
+                presentTurnPlayer.playerPosition=(presentTurnPlayer.playerPosition+1)%12;
+                [self resetAllIconInState:1 andFocusedPlayer:self.whoseTurn];//走到了，所以變成圓形
+                [self stepToGoDisplay];
+                
+                //這邊的運作邏輯是，會先給state，並呼叫timer，來讓進入其他狀態潛前有一段緩衝時間。
+                
+                switch (presentTurnPlayer.playerPosition) {//##還有一堆state沒做
+                    case 1://影片
+//                      呼叫movie
+//                        self.delayTimerEvent=delayTimerEventType_video  ;
+//                        self.gameState=gameState_movieDisplayInitialization;
+//                        break;
+                        
+                    case 4://音樂
+//                      呼叫music
+//                        self.delayTimerEvent=delayTimerEventType_music;
+//                        self.gameState=gameState_musicDisplayInitialization;
+//                        break;
+                        
+                    case 7://機會
+//                      呼叫chance
+//                        self.delayTimerEvent=delayTimerEventType_chance;
+//                        self.gameState=gameState_chanceDisplayInitialization;
+//                        break;
+                    case 10://遊戲
+                        
+//                        self.gameState=gameState_pogInitialization;
+//                        self.delayTimerEvent=delayTimerEventType_game;
+//                        break;
+                        self.gameState=gameState_pogInitialization;
+                        self.delayTimerEvent=delayTimerEventType_game;
+                        break;
+
+                    default://一般的照片
+                        self.gameState=gameState_photoDisplay;//要先改state，不然在timer等待時間誤觸到其他photo就爛了
+                        self.delayTimerEvent=delayTimerEventType_photo;
+                        break;
+                }
+                
+                [NSTimer scheduledTimerWithTimeInterval:1 //要用timer的話就用這行
+                                                 target:self
+                                               selector:@selector(timerEvent:)
+                                               userInfo:nil
+                                                repeats:NO];
+            }else{
+                presentTurnPlayer.playerPosition=(presentTurnPlayer.playerPosition+1)%12;
+                [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];
+                [self stepToGoDisplay];
+            }
+        }
+    }
+    
+}
+
+
+
 //根據現在掌權的使用者改變背景顏色
 -(void)backgroundColorReset:(int)typeInput{
     //type:0 正常地圖的背景顏色
@@ -293,9 +252,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             case playerColor_yellow:
                 [self.backgroundColor setImage:[self.backgroundImageList objectAtIndex:playerColor_yellow]];
                 break;
-    //        case playerColor_blue:
-    //            [self.backgroundColor setImage:[self.backgroundImageList objectAtIndex:playerColor_red]];
-    //            break;
+                //        case playerColor_blue:
+                //            [self.backgroundColor setImage:[self.backgroundImageList objectAtIndex:playerColor_red]];
+                //            break;
             case playerColor_green:
                 [self.backgroundColor setImage:[self.backgroundImageList objectAtIndex:playerColor_green]];
                 break;
@@ -322,146 +281,282 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             default:
                 break;
         }
-    }else if (typeInput==2){
+    }else if(typeInput==2){
         [self.imageView_movie_background_color setImage:[self.backgroundImageList objectAtIndex:playerColor_ForTable]];
     }
-
+    
 }
+
 //統一管控所有跟blink有關的動畫
--(void)blinkAnimationFor:(blinkAnimationType)blinkAnimationTypeInput andFocus:(NSInteger)focusedPosition andState:(blinkAnimationState)blinkAnimationStateInput{
+-(void)blinkAnimationFor:(blinkAnimationType)blinkAnimationTypeInput andState:(blinkAnimationState)blinkAnimationStateInput{
+    int i,j;//expected expression:在switch中不太能宣告變數不然會爛掉。
+    CGRect blinkFrame;//要blink的位置
+    HPPrimitiveType *primitiveTemp;
     //足跡的blink
     HPPlayer *presentPlayer=[self.playerList objectAtIndex:self.whoseTurn];
-    if(blinkAnimationTypeInput==blinkAnimationType_icon){
+    switch (blinkAnimationTypeInput) {
+        case blinkAnimationType_icon:
 
-        CGRect blinkFrame;//要blink的位置
-        switch (presentPlayer.playerPosition) {
-            case 0:
-                self.image_icon_blink.frame=CGRectMake(478, 800, 231, 228);
-                break;
-            case 1:
-                self.image_icon_blink.frame=CGRectMake(470,310, 231, 228);
-                break;
-            case 2:
-                self.image_icon_blink.frame=CGRectMake(143,198, 231, 228);
-                break;
-            case 3:
-                self.image_icon_blink.frame=CGRectMake(529,199, 231, 228);
-                break;
-            case 4:
-                self.image_icon_blink.frame=CGRectMake(163,223, 231, 228);
-                break;
-            case 5:
-                self.image_icon_blink.frame=CGRectMake(55,628, 231, 228);
-                break;
-            case 6:
-                self.image_icon_blink.frame=CGRectMake(55,68, 231, 228);
-                break;
-            case 7:
-                self.image_icon_blink.frame=CGRectMake(65,548, 231, 228);
-                break;
-            case 8:
-                self.image_icon_blink.frame=CGRectMake(388,688, 231, 228);
-                break;
-            case 9:
-                self.image_icon_blink.frame=CGRectMake(2,688, 231, 228);
-                break;
-            case 10:
-                self.image_icon_blink.frame=CGRectMake(384,633, 231, 228);
-                break;
-            case 11:
-                self.image_icon_blink.frame=CGRectMake(479,200, 231, 228);
-                break;
-            default:
-                break;
-        }
-        if(blinkAnimationStateInput==blinkAnimationState_on){
-            [self.image_icon_blink startAnimating];
-        }else{
-            [self.image_icon_blink stopAnimating];
-        }
-    }else if(blinkAnimationTypeInput==blinkAnimationType_photo){
-        int j;
-        for(j=0;j<12;j++){//就全關吧，我也懶得算了
-            [[self.image_photo_blink objectAtIndex:j] stopAnimating];
-        }
-        if(blinkAnimationStateInput==blinkAnimationState_on){
-            if(self.gameState==gameState_moveForward){
-                if(self.toolbarLightOn){//全部燈光提示都要有的
-                    for(j=presentPlayer.playerPosition+1;j<=presentPlayer.playerPosition+self.stepToGo;j++){//再把要的打開
-                        if(j>=(self.viewNumber*3)&&j<(self.viewNumber+1)*3){//在可視範圍中
-                            [[self.image_photo_blink objectAtIndex:(j%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
+            switch (presentPlayer.playerPosition) {
+                case 0:
+                    self.image_icon_blink.frame=CGRectMake(478, 800, 231, 228);
+                    break;
+                case 1:
+                    self.image_icon_blink.frame=CGRectMake(470,310, 231, 228);
+                    break;
+                case 2:
+                    self.image_icon_blink.frame=CGRectMake(143,198, 231, 228);
+                    break;
+                case 3:
+                    self.image_icon_blink.frame=CGRectMake(529,199, 231, 228);
+                    break;
+                case 4:
+                    self.image_icon_blink.frame=CGRectMake(163,223, 231, 228);
+                    break;
+                case 5:
+                    self.image_icon_blink.frame=CGRectMake(55,628, 231, 228);
+                    break;
+                case 6:
+                    self.image_icon_blink.frame=CGRectMake(55,68, 231, 228);
+                    break;
+                case 7:
+                    self.image_icon_blink.frame=CGRectMake(65,548, 231, 228);
+                    break;
+                case 8:
+                    self.image_icon_blink.frame=CGRectMake(388,686, 231, 228);
+                    break;
+                case 9:
+                    self.image_icon_blink.frame=CGRectMake(2,688, 231, 228);
+                    break;
+                case 10:
+                    self.image_icon_blink.frame=CGRectMake(384,633, 231, 228);
+                    break;
+                case 11:
+                    self.image_icon_blink.frame=CGRectMake(479,200, 231, 228);
+                    break;
+                default:
+                    break;
+            }
+            if(blinkAnimationStateInput==blinkAnimationState_on){
+                [self.image_icon_blink startAnimating];
+            }else{
+                [self.image_icon_blink stopAnimating];
+            }
+            
+            break;
+            
+            
+        case blinkAnimationType_photo:
+
+            for(j=0;j<12;j++){//就全關吧，我也懶得算了
+                [[self.image_photo_blink objectAtIndex:j] stopAnimating];
+            }
+            if(blinkAnimationStateInput==blinkAnimationState_on){
+                if(self.gameState==gameState_moveForward){
+                    if(self.toolbarLightOn){//全部燈光提示都要有的
+                        for(j=presentPlayer.playerPosition+1;j<=presentPlayer.playerPosition+self.stepToGo;j++){//再把要的打開
+                            if(j>=(self.viewNumber*3)&&j<(self.viewNumber+1)*3){//在可視範圍中
+                                [[self.image_photo_blink objectAtIndex:(j%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
+                            }
                         }
-                    }
-                }else{//只要下一步提示的
-                    if(presentPlayer.playerPosition<=(presentPlayer.playerPosition+self.stepToGo)){
-                        if((presentPlayer.playerPosition)>=(self.viewNumber*3)&&(presentPlayer.playerPosition)<(self.viewNumber+1)*3){//在可視範圍中
-                            [[self.image_photo_blink objectAtIndex:((presentPlayer.playerPosition)%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
+                    }else{//只要下一步提示的
+                        if(presentPlayer.playerPosition<=presentPlayer.playerPosition+self.stepToGo){
+                            if((presentPlayer.playerPosition)>=(self.viewNumber*3)&&(presentPlayer.playerPosition)<(self.viewNumber+1)*3){//在可視範圍中
+                                [[self.image_photo_blink objectAtIndex:((presentPlayer.playerPosition)%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
+                            }
                         }
                     }
                 }
             }
-        }
-    }else if(blinkAnimationTypeInput==blinkAnimationType_questionCard_1){//問題卡初始化，所有都變成白色
-        HPPrimitiveType *primitiveTemp=[self.questionCardSelected objectAtIndex:self.viewNumber];
-        if(!primitiveTemp.Boolean){//如果自己沒被按過了，才顯示白圈
-            [[self.image_questionCard_blink objectAtIndex:0] startAnimating];
-        }
-    }else if(blinkAnimationTypeInput==blinkAnimationType_questionCard_2){//blinkAnimationState_on:只剩一個顏色再閃，其他都暗掉,
-                                                                         //blinkAnimationState_off: 全部都暗掉
-        int i;
-        for(i=0;i<=4;i++){//全關
-            [[self.image_questionCard_blink objectAtIndex:i] stopAnimating];
-        }
-        //這個管控在buttonHit_questionCard就做掉了，所以這邊只要直接閃或停就好了
-        if(blinkAnimationStateInput==blinkAnimationState_on){
-            [[self.image_questionCard_blink objectAtIndex:self.whoseTurn+1] startAnimating];
-        }else if(blinkAnimationStateInput==blinkAnimationState_off){
-        }
+
+            break;
+            
+            
+        //問題卡初始化，所有都變成白色
+        case blinkAnimationType_circleWithoutColor:
+            //%%
+            
+            if(blinkAnimationStateInput==blinkAnimationState_movieMusicLeftUp){//這邊先確定位置，由傳入的參數控制
+                [self blinkImageCirclePlace:blinkImageCirclePlaceStateMovieMusicLeftUp];
+                NSLog(@"這");
+                [[self.image_questionCard_blink objectAtIndex:0] startAnimating];
+            }else if(blinkAnimationStateInput==blinkAnimationState_movieMusicRightDown){
+                [self blinkImageCirclePlace:blinkImageCirclePlaceStateMovieMusicRightDown];
+                [[self.image_questionCard_blink objectAtIndex:0] startAnimating];
+            }else{
+                [self blinkImageCirclePlace:blinkImageCirclePlaceStateQuestionCard];//只有questionCard才要額外辨識要不要量起來
+                primitiveTemp=[self.questionCardSelected objectAtIndex:self.viewNumber];
+                if(!primitiveTemp.Boolean){//如果自己沒被按過了，才顯示白圈
+                    [[self.image_questionCard_blink objectAtIndex:0] startAnimating];
+                }
+            }
+            
+
+            
+            break;
+            
+            
+        case blinkAnimationType_circleWithColor:
+            //blinkAnimationState_on:只剩一個顏色再閃，其他都暗掉,
+            //blinkAnimationState_off: 全部都暗掉
+            
+            //%%改成4
+            for(i=0;i<=4;i++){//全關
+                [[self.image_questionCard_blink objectAtIndex:i] stopAnimating];
+            }
+            //這個管控在buttonHit_questionCard就做掉了，所以這邊只要直接閃或停就好了
+            if(blinkAnimationStateInput==blinkAnimationState_on){
+                [[self.image_questionCard_blink objectAtIndex:self.whoseTurn+1] startAnimating];
+            }else if(blinkAnimationStateInput==blinkAnimationState_off){
+                
+            }
+            
+            break;
+            
+        //%%
+        case blinkAnimationType_pog:
+            if(blinkAnimationStateInput==blinkAnimationState_on){//要開亮ㄤ仔標 - 依照現在的state
+                for(i=0;i<=1;i++){
+                    primitiveTemp=[self.pogSheetMapping objectAtIndex:(i+self.viewNumber*2)];
+                    if(primitiveTemp.Integer==2){
+                        [[self.imageView_blink_pog objectAtIndex:(i)] setHidden:YES];
+                        [[self.imageView_blink_pog objectAtIndex:(i)] stopAnimating];
+                    }else{
+                        [[self.imageView_blink_pog objectAtIndex:(i)] setHidden:NO];
+                        [[self.imageView_blink_pog objectAtIndex:(i)] startAnimating];
+                    }
+
+                }
+            }else{//全部關暗
+                for(i=0;i<=1;i++){
+                    [[self.imageView_blink_pog objectAtIndex:(i)] setHidden:YES];
+                    [[self.imageView_blink_pog objectAtIndex:(i)] stopAnimating];
+                }
+            }
+            
+            default:
+            break;
+    }
+    
+}
+//看閃閃閃的圈圈要放在哪裡
+-(void)blinkImageCirclePlace:(blinkImageCirclePlaceState)stateInput{
+    //blinkImageCirclePlaceStateQuestionCard:問題卡的圈圈
+    //blinkImageCirclePlaceStateMovieMusicLeftUp:影片、音樂的左上角
+    //blinkImageCirclePlaceStateMovieMusicRightDown:影片、音樂的右上角
+    
+    CGRect rectTemp;
+    int i;
+    switch (stateInput) {
+        case blinkImageCirclePlaceStateQuestionCard:
+            switch (self.viewNumber) {
+                case 0:
+                case 1:
+                    rectTemp=CGRectMake(269, 437, 257, 257);
+                    break;
+                case 2:
+                case 3:
+                    rectTemp=CGRectMake(268, 414, 257, 257);
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case blinkImageCirclePlaceStateMovieMusicLeftUp:
+            rectTemp=CGRectMake(23, 78, 257, 257);
+            break;
+        case blinkImageCirclePlaceStateMovieMusicRightDown:
+            rectTemp=CGRectMake(487, 687, 257, 257);
+            break;
+        default:
+            break;
+    }
+    for(i=0;i<=4;i++){//全關
+        [[self.image_questionCard_blink objectAtIndex:i] setFrame:rectTemp];
     }
 
+    
+    
 }
+
+-(void)blinkArrayAdderWithArray:(NSArray*)arrayInput andRect:(CGRect)rectInput andType:(blinkAnimationType)typeInput{//單純用來簡化加入照片的blink時的程序
+    
+    
+    
+    UIImageView *image_blink_animation;
+    image_blink_animation = [UIImageView alloc];
+    
+    [image_blink_animation initWithFrame:rectInput];
+    image_blink_animation.animationImages = arrayInput;//動畫的array
+    image_blink_animation.animationDuration = 1;//動畫時間
+    image_blink_animation.animationRepeatCount = 0;//播幾次。0表無限
+    [image_blink_animation stopAnimating];//先暫停，之後點到步數再亮
+    switch (typeInput) {
+        case blinkAnimationType_icon:
+            self.image_icon_blink=image_blink_animation;
+            break;
+        case blinkAnimationType_photo:
+            switch (self.viewNumber) {
+                case 1:
+                    image_blink_animation.transform=CGAffineTransformMakeScale(-1, 1);
+                    break;
+                case 2:
+                    image_blink_animation.transform=CGAffineTransformMakeScale(-1, -1);
+                    break;
+                case 3:
+                    image_blink_animation.transform=CGAffineTransformMakeScale(1, -1);
+                    break;
+                case 0:
+                default:
+                    break;
+            }
+            [self.image_photo_blink addObject:image_blink_animation];
+            break;
+        case blinkAnimationType_circleWithoutColor:
+            [self.image_questionCard_blink addObject:image_blink_animation];
+            break;
+        case blinkAnimationType_veryGood:
+            [self.imageView_veryGood addObject:image_blink_animation];
+            break;
+        case blinkAnimationType_pogPaperTorn:
+            image_blink_animation.animationRepeatCount = 1;//只播一次
+            self.imageView_pogPaperTorn=image_blink_animation;
+            break;
+        case blinkAnimationType_pog:
+            [self.imageView_blink_pog addObject:image_blink_animation];
+            break;
+        case blinkAnimationType_movieMusicNormal:
+        default:
+            break;
+    }
+    
+    [self.view addSubview:image_blink_animation];
+}
+
 
 //換新使用者
 -(void)playerHandoff{
-    if (viewDidLoadHandoff==NO) {
-        NSMutableData *data = [NSMutableData dataWithCapacity:1];
-        char messageType = gkMessageHandoffInfo;
-        [data appendBytes:&messageType length:1];
-        [self sendData:data useSession:session];
-    }
-    NSLog(@"handoff before %d", self.stepToGo);
     //##之後影片那些也還要做初始化
     self.overallRound+=1;
+    
+    NSLog(@"whose?前,%d",self.whoseTurn);
     self.whoseTurn=(self.whoseTurn+1)%self.playerNumber;
+    NSLog(@"whose?後,%d",self.whoseTurn);
     self.gameState=gameState_throwDice;
     [self stepToGoDisplay];
-    [self blinkAnimationFor:blinkAnimationType_photo andFocus:UNIMPORTANT andState:blinkAnimationState_off];//把全部的地圖燈都關掉
+    [self blinkAnimationFor:blinkAnimationType_photo andState:blinkAnimationState_off];//把全部的地圖燈都關掉
+    if(self.viewNumber==0){//把播放關掉
+        UIButton *buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
+        [buttonTemp setBackgroundImage:[UIImage imageNamed:@"play_and_pause"] forState:UIControlStateNormal];
+    }
+    
     if(self.viewNumber==1){
-        [self button_toolbar_number_darkener];
+        [self button_toolbar_darkener];
     }
     self.stepToGo=0;
     [self backgroundColorReset:0];
     [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];//先變成箭頭來提醒現在的使用者
-    NSLog(@"handoff end %d", self.stepToGo);
 }
-
--(void)playerHandoffFromRemote{
-    //##之後影片那些也還要做初始化
-    NSLog(@"handoff before rm %d", self.stepToGo);
-    self.overallRound+=1;
-    self.whoseTurn=(self.whoseTurn+1)%self.playerNumber;
-    self.gameState=gameState_throwDice;
-    [self stepToGoDisplay];
-    [self blinkAnimationFor:blinkAnimationType_photo andFocus:UNIMPORTANT andState:blinkAnimationState_off];//把全部的地圖燈都關掉
-    if(self.viewNumber==1){
-        [self button_toolbar_number_darkener];
-    }
-    self.stepToGo=0;
-    [self backgroundColorReset:0];
-    [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];//先變成箭頭來提醒現在的使用者
-    NSLog(@"handoff end rm %d", self.stepToGo);
-}
-
 //顯示那個「走x步」的，含判斷及顯示
 -(void)stepToGoDisplay{
     
@@ -472,138 +567,80 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     }else{
         self.button_stepIndicator.transform=CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0));
     }
-
     
     if (self.gameState==gameState_throwDice) {//throwDice時顯示「請擲骰」
         if(nowPlayer.playerPosition>=(self.viewNumber+1)*3||nowPlayer.playerPosition<self.viewNumber*3){
             [self.button_stepIndicator setImage:[UIImage imageNamed:@"transparent"]];
-//            NSLog(@"消失1");
         }else{
-//            if(self.whoseTurn!=playerColor_blue){//正常情況，顯示水平的
-                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:6]];
-//            }else{//如果是藍色的狀況，就要顯示成垂直的
-//                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:13]];
-//            }
+            //            if(self.whoseTurn!=playerColor_blue){//正常情況，顯示水平的
+            [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:6]];
+            //            }else{//如果是藍色的狀況，就要顯示成垂直的
+            //                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:13]];
+            //            }
         }
     }else if(self.gameState==gameState_moveForward){//顯示步數
-        [self blinkAnimationFor:blinkAnimationType_photo andFocus:UNIMPORTANT andState:blinkAnimationState_on];
+        [self blinkAnimationFor:blinkAnimationType_photo andState:blinkAnimationState_on];
         //要position有在可視範圍內才顯示
         if(nowPlayer.playerPosition>=(self.viewNumber+1)*3||nowPlayer.playerPosition<self.viewNumber*3||self.stepToGo==0){
             NSLog(@"我在這");
             [self.button_stepIndicator setImage:[UIImage imageNamed:@"transparent"]];
         }else{
-//            if(self.whoseTurn!=playerColor_blue){//正常情況，顯示水平的
-                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:(self.stepToGo-1)]];
-            NSLog(@"in it  %d %@",self.stepToGo,[self.stepImageList objectAtIndex:(self.stepToGo-1)]);
-//            }else{//如果是藍色的狀況，就要顯示成垂直的
-//                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:(self.stepToGo+7-1)]];
-//            }
+            //            if(self.whoseTurn!=playerColor_blue){//正常情況，顯示水平的
+            [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:(self.stepToGo-1)]];
+            //            }else{//如果是藍色的狀況，就要顯示成垂直的
+            //                [self.button_stepIndicator setImage:[self.stepImageList objectAtIndex:(self.stepToGo+7-1)]];
+            //            }
         }
     }
     
 }
 
-- (IBAction)buttonHit_photo:(id)sender{
-   
+-(void)showPhoto:(NSInteger)stateInput{
+    //state EXIT:不顯示
+    //          1:顯示
     
-    //現在按到的photo，在0~11的position裡面的位置
-    int globalPressedPosition;
     
-    if (hitPhotoFromRemote == NO) {
-        UIButton *inputButton=(UIButton *)sender;
-        NSLog(@"%d",inputButton.tag);
-        globalPressedPosition=inputButton.tag-tag_button_photo_0+self.viewNumber*3;
+    if(stateInput==1){
+        //    以下為開始顯示相框及照片
+        CGAffineTransform transform_0deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0));
+        CGAffineTransform transform_90deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0));
+        CGAffineTransform transform_270deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0));
         
-        NSMutableData *data = [NSMutableData dataWithCapacity:1 + sizeof(HitPhotoInfo)];
-        char messageType = gkMessageHitPhotoInfo;
-        [data appendBytes:&messageType length:1];
-        HitPhotoInfo message;
-        message.globalPressedPositionTrs = globalPressedPosition;
-        [data appendBytes:&message length:sizeof(HitPhotoInfo)];
-        [self sendData:data useSession:session];
-    }else{
-        globalPressedPosition = hitPhotoInfoMessage.globalPressedPositionTrs;
-        hitPhotoFromRemote = NO;
-    }
-    NSLog(@"pos %d", globalPressedPosition);
-    
-    //在gameState_throwDice時，使用者按到他應該按的photo時進入下一個state
-    //即「長輩把自己的棋子放到剛剛走到的地方」這個動作
-    HPPlayer *presentTurnPlayer=[self.playerList objectAtIndex:self.whoseTurn];
-    if(self.gameState==gameState_throwDice){
-        if(presentTurnPlayer.playerPosition==globalPressedPosition&&self.stepToGo!=0){//按對了棋子所在地，就把燈關掉。如果step是0代表還沒有按數字，也不能讓他動
-            [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];
-            self.gameState=gameState_moveForward;
-            [self stepToGoDisplay];
+        self.albumPhoto.transform=transform_0deg;//先把轉動歸零
+        //     if(self.whoseTurn==playerColor_blue){//blue時，顯示相框的方式不同，##未完成：沒有照片時也是
+        //         [self.albumFrame setImage:self.albumFrame_potrait];
+        //
+        //         [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:0]];
+        //         if(self.viewNumber==0||self.viewNumber==3){
+        //             self.albumPhoto.frame=CGRectMake(96,270, 663, 502);
+        //         }else{
+        //             self.albumPhoto.frame=CGRectMake(26,260, 663, 502);
+        //         }
+        //     //長的：663,502(1,2機:26,260)(0,3機：96,270)
+        //     //橫的：830,679(1,2機:55,34)(0,3機：142,49)
+        //     }else{
+        [self.albumFrame setImage:self.albumFrame_horizontal];
+        [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:0]];
+        
+        if(self.whoseTurn==playerColor_red||self.whoseTurn==playerColor_yellow){
+            self.albumPhoto.transform=transform_90deg;//照片面向左邊的情況
+        }else{
+            self.albumPhoto.transform=transform_270deg;//照片面向右邊的情況
         }
-    }else if(self.gameState==gameState_moveForward){
-        if((presentTurnPlayer.playerPosition+1)%12==globalPressedPosition){//成功前進
-            int j;
-            //以下是拿來測，下一步要站的地方有沒有人在，有人在的話那就繼續往下走
-            BOOL advanceMore=NO;
-            HPPlayer *comparePlayer;
-            for(j=0;j<self.playerNumber;j++){
-                comparePlayer=[self.playerList objectAtIndex:j];
-                if(j!=self.whoseTurn&&
-                   (comparePlayer.playerPosition==(presentTurnPlayer.playerPosition+1)%12)){
-                    advanceMore=YES;
-                 }
-            }
-            if(!(advanceMore&&self.stepToGo==1)){//只有在剩下一步要走時，才會不扣掉剩下的步數
-                self.stepToGo=self.stepToGo-1;
-            }
-            if(self.stepToGo==0){
-                presentTurnPlayer.playerPosition=(presentTurnPlayer.playerPosition+1)%12;
-                [self resetAllIconInState:1 andFocusedPlayer:self.whoseTurn];//走到了，所以變成圓形
-                [self stepToGoDisplay];
-
-                switch (presentTurnPlayer.playerPosition) {//##還有一堆state沒做
-                    case 1://影片
-                        // 呼叫movie
-                        // self.delayTimerEvent=delayTimerEventType_video ;
-                        // self.gameState=gameState_movieDisplayInitialization;
-                        // break;
-                        
-                    case 4://音樂
-                        // 呼叫music
-                        // self.delayTimerEvent=delayTimerEventType_music;
-                        // self.gameState=gameState_musicDisplayInitialization;
-                        // break;
-                        
-                    case 7://機會
-                        // 呼叫chance
-                         self.delayTimerEvent=delayTimerEventType_chance;
-                         self.gameState=gameState_chanceDisplayInitialization;
-                         break;
-                    case 10://遊戲
-                        
-//                        self.gameState=gameState_pogInitialization;
-//                        self.delayTimerEvent=delayTimerEventType_game;
-//
-//                        break;
-                        
-                        // 呼叫chance
-                        self.delayTimerEvent=delayTimerEventType_chance;
-                        self.gameState=gameState_chanceDisplayInitialization;
-                        break;
-                        
-                    default://一般的照片
-                        self.gameState=gameState_photoDisplay;//要先改state，不然在timer等待時間誤觸到其他photo就爛了
-                        self.delayTimerEvent=delayTimerEventType_photo;
-                        break;
-                }
-
-                [NSTimer scheduledTimerWithTimeInterval:1 //要用timer的話就用這行
-                                                 target:self
-                                               selector:@selector(timerEvent:)
-                                               userInfo:nil
-                                                repeats:NO];
-            }else{
-                presentTurnPlayer.playerPosition=(presentTurnPlayer.playerPosition+1)%12;
-                [self resetAllIconInState:3 andFocusedPlayer:self.whoseTurn];
-                [self stepToGoDisplay];
-            }
+        
+        if(self.viewNumber==0||self.viewNumber==1){
+            self.albumPhoto.frame=CGRectMake(44,52, 676, 830);
+        }else{
+            self.albumPhoto.frame=CGRectMake(44,140, 676, 830);
+            
+            //轉動之後判斷圖片的機制：左上角仍然是錨點，然後長寬方向也是按照原先ipad的長寬。可以把它想成決定框架的大小，裡面圖片怎麼轉隨便他。
+            //另外，如果frame先於transform，則就變成先填圖再轉，用這個方法就可以不用管轉成45度角時奇怪的長高，應該是比較好的方法
         }
+        
+        //     }
+    }else if(stateInput==EXIT){//取消顯示ㄅ
+        [self.albumFrame setImage:[UIImage imageNamed:@"transparent"]];
+        [self.albumPhoto setImage:[UIImage imageNamed:@"transparent"]];
     }
     
 }
@@ -613,22 +650,14 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     NSLog(@"%d",inputButton.tag);
     switch (self.gameState) {
         case gameState_chanceDisplayOutside://母牌要進入子牌
-            if(inputButton.tag==tag_button_questionCard_circle){
+            if(inputButton.tag==tag_button_questionCard_circle){//自己被選到才要閃
                 
                 
                 //把自己的那個圓形的燈開亮一下
-                [self blinkAnimationFor:blinkAnimationType_questionCard_2 andFocus:UNIMPORTANT andState:blinkAnimationState_on];
+                [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_on];
                 
                 //$$下行廣播給所有人聽，改他們的self.questionCardSelectedNumber為此台的self.viewNumber
                 self.questionCardSelectedNumber=self.viewNumber;//現在是自己被選到
-                
-                NSMutableData *data = [NSMutableData dataWithCapacity:1 + sizeof(QuestionCardHitInfo)];
-                char messageType = gkMessageQuestionCardHit;
-                [data appendBytes:&messageType length:1];
-                QuestionCardHitInfo message;
-                message.questionCardSelectedNumberTrs = self.questionCardSelectedNumber;
-                [data appendBytes:&message length:sizeof(QuestionCardHitInfo)];
-                [self sendData:data useSession:session];
                 
                 [NSTimer scheduledTimerWithTimeInterval:1
                                                  target:self
@@ -662,19 +691,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                                                userInfo:nil
                                                 repeats:NO];
                 
-                NSMutableData *data = [NSMutableData dataWithCapacity:1];
-                char messageType = gkMessageQuestionCardRight;
-                [data appendBytes:&messageType length:1];
-                [self sendData:data useSession:session];
-                
             }else if(inputButton.tag==tag_button_questionCard_wrong){//答錯了
                 //$$廣播給所有人
                 [self showChance:2 andTarget:UNIMPORTANT];
-                
-                NSMutableData *data = [NSMutableData dataWithCapacity:1];
-                char messageType = gkMessageQuestionCardWrong;
-                [data appendBytes:&messageType length:1];
-                [self sendData:data useSession:session];
             }
             break;
         default:
@@ -682,61 +701,11 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     }
     
 }
--(void)showPhoto:(NSInteger)stateInput{
-    //state 0:不顯示
-    //      1:顯示
-    
-    
-    if(stateInput==1){
-//    以下為開始顯示相框及照片
-    
-     CGAffineTransform transform_0deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0));
-     CGAffineTransform transform_90deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0));
-     CGAffineTransform transform_270deg = CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0));
-    
-     self.albumPhoto.transform=transform_0deg;//先把轉動歸零
-//     if(self.whoseTurn==playerColor_blue){//blue時，顯示相框的方式不同，##未完成：沒有照片時也是
-//         [self.albumFrame setImage:self.albumFrame_potrait];
-//         
-//         [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:0]];
-//         if(self.viewNumber==0||self.viewNumber==3){
-//             self.albumPhoto.frame=CGRectMake(96,270, 663, 502);
-//         }else{
-//             self.albumPhoto.frame=CGRectMake(26,260, 663, 502);
-//         }
-//     //長的：663,502(1,2機:26,260)(0,3機：96,270)
-//     //橫的：830,679(1,2機:55,34)(0,3機：142,49)
-//     }else{
-         [self.albumFrame setImage:self.albumFrame_horizontal];
-         [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:0]];
-         
-         if(self.whoseTurn==playerColor_red||self.whoseTurn==playerColor_yellow){
-             self.albumPhoto.transform=transform_90deg;//照片面向左邊的情況
-         }else{
-             self.albumPhoto.transform=transform_270deg;//照片面向右邊的情況
-         }
-         
-         if(self.viewNumber==0||self.viewNumber==1){
-             self.albumPhoto.frame=CGRectMake(44,52, 676, 830);
-         }else{
-             self.albumPhoto.frame=CGRectMake(44,140, 676, 830);
-             
-             //轉動之後判斷圖片的機制：左上角仍然是錨點，然後長寬方向也是按照原先ipad的長寬。可以把它想成決定框架的大小，裡面圖片怎麼轉隨便他。
-             //另外，如果frame先於transform，則就變成先填圖再轉，用這個方法就可以不用管轉成45度角時奇怪的長高，應該是比較好的方法
-         }
-     
-//     }
-    }else if(stateInput==0){//取消顯示ㄅ
-        [self.albumFrame setImage:[UIImage imageNamed:@"transparent"]];
-        [self.albumPhoto setImage:[UIImage imageNamed:@"transparent"]];
-    }
-
-}
 -(void)showChance:(NSInteger)stateInput andTarget:(int)targetViewNumber{//Chance進來了,targetViewNumber是按到哪張子牌
     //state EXIT:不顯示
-    // 1:初始化(第一次顯示母牌)
-    // 2:正常顯示母牌(第二次以後)
-    // 3:顯示子牌
+    //      1:初始化(第一次顯示母牌)
+    //      2:正常顯示母牌(第二次以後)
+    //      3:顯示子牌
     int i;
     HPPrimitiveType *boolTemp;
     switch (stateInput) {
@@ -746,7 +715,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             for(i=0;i<=2;i++){
                 [[self.button_questionCard objectAtIndex:i] setHidden:YES];
             }
-            [self blinkAnimationFor:blinkAnimationType_questionCard_2 andFocus:UNIMPORTANT andState:blinkAnimationState_off];//把全部關掉
+            [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];//把全部關掉
             break;
         case 1://initialization，顯示母牌
             self.questionCardSelected=[[NSMutableArray alloc] initWithCapacity:4];
@@ -760,7 +729,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             [self.questionCard setHidden:NO];//幹之前都不知道有hidden這個屬性這麼方便可以把東西直接藏起來，還用成transparent真的太白痴了
             [[self.button_questionCard objectAtIndex:0] setHidden:NO];
             
-            [self blinkAnimationFor:blinkAnimationType_questionCard_1 andFocus:UNIMPORTANT andState:UNIMPORTANT];//把全部開亮
+            [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:UNIMPORTANT];//把全部開亮
             self.gameState=gameState_chanceDisplayOutside;
             
             break;
@@ -779,7 +748,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 }
                 
                 [self.questionCard setImage:[self.image_questionCard objectAtIndex:0]];//顯示母牌
-                [self blinkAnimationFor:blinkAnimationType_questionCard_1 andFocus:UNIMPORTANT andState:UNIMPORTANT];//把全部開亮
+                [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:UNIMPORTANT];//把全部開亮
             }
             self.gameState=gameState_chanceDisplayOutside;
             break;
@@ -787,10 +756,10 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         case 3://有人要顯示子牌
             boolTemp=[self.questionCardSelected objectAtIndex:self.viewNumber];
             if(!boolTemp.Boolean){//若自己已經被按過了：就不用管了
-                [self blinkAnimationFor:blinkAnimationType_questionCard_2 andFocus:UNIMPORTANT andState:blinkAnimationState_off];//把全部關掉
+                [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];//把全部關掉
                 if(targetViewNumber==self.viewNumber){//如果是自己被按到的話才做事情
                     [self.questionCard setImage:[self.image_questionCard objectAtIndex:self.viewNumber+1]];//##這邊之後應該要用亂數
-                    // 但之前寫的也懶得改了...
+                    //                                                                                      但之前寫的也懶得改了...
                     [[self.button_questionCard objectAtIndex:0] setHidden:YES];//把中間那格停掉
                     //把OX開出來
                     for(i=1;i<=2;i++){
@@ -807,6 +776,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             break;
     }
 }
+
 -(void)addButtonWithImage:(NSString*)imageName andRect:(CGRect)rectInput andTag:(UIViewTag)tagInput andType:(buttonType)buttonTypeInput{
     
     //旋轉用trasform
@@ -839,6 +809,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                     break;
                 case tag_button_toolbar_4_backward:
                     [buttonTemp setBackgroundImage:[UIImage imageNamed:@"backward_press"] forState:UIControlEventTouchDown];
+                    break;
+                default:
                     break;
             }
             [self.button_toolbar_function addObject:buttonTemp];
@@ -879,6 +851,14 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         case buttonType_TEST:
             [buttonTemp addTarget:self action:@selector(buttonHit_TEST:) forControlEvents:UIControlEventTouchUpInside];
             break;
+        //$$
+        case buttonType_movieMusicTransparent://music跟movie同時都聽
+            [buttonTemp addTarget:self action:@selector(movieButtonPressed) forControlEvents:UIControlEventTouchUpInside];
+            [buttonTemp addTarget:self action:@selector(musicButtonPressed ) forControlEvents:UIControlEventTouchUpInside];
+            
+            [self.movieTransparentButton addObject:buttonTemp];
+            buttonTemp.hidden=YES;
+            break;
             
             
         default:
@@ -886,8 +866,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     }
     //alpha差不多0.8吧
     [self.view addSubview:buttonTemp];
-    
-    
+ 
 }
 
 -(void)resetAllIconInState:(NSInteger)stateInput andFocusedPlayer:(playerColor)playerInput{//重置所有棋子。順便把棋子那格打亮。
@@ -921,24 +900,24 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             [self changeIconPlayer:i andPosition:playerTemp.playerPosition andState:stateInput];
         }
     }
-
+    
     //如果輪到他的話就變成箭頭
     playerTemp=[self.playerList objectAtIndex:playerInput];
     if(state2){
         [self changeIconPlayer:playerInput andPosition:playerTemp.playerPosition andState:stateTemp];
     }
     
-
-
+    
+    
 }
 
 //移動/改變使用者的棋子（單個）
 -(void)changeIconPlayer:(playerColor)playerInput andPosition:(NSInteger)positionInput andState:(NSInteger)stateInput{
-//    state:fstep
-//        0:不顯示
-//        1:正常圓圈
-//        2:圓圈with箭頭with光圈
-//        3:圓圈with箭頭without光圈
+    //    state:fstep
+    //        0:不顯示
+    //        1:正常圓圈
+    //        2:圓圈with箭頭with光圈
+    //        3:圓圈with箭頭without光圈
     UIImageView *iconTemp=[self.image_icon objectAtIndex:playerInput];
     NSLog(@"誰傳進來：%d,位置：%d,state:%d",(int)playerInput,(int)positionInput,stateInput);
     //要position有在可視範圍內才顯示
@@ -949,9 +928,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     
     if(stateInput==0){
         [iconTemp setImage:[UIImage imageNamed:@"transparent"]];
-        [self blinkAnimationFor:blinkAnimationType_icon andFocus:UNIMPORTANT andState:blinkAnimationState_off];//其實關動畫的時候Focus沒有用
+        [self blinkAnimationFor:blinkAnimationType_icon andState:blinkAnimationState_off];//其實關動畫的時候Focus沒有用
     }else if(stateInput==1){
-        [self blinkAnimationFor:blinkAnimationType_icon andFocus:UNIMPORTANT andState:blinkAnimationState_off];
+        [self blinkAnimationFor:blinkAnimationType_icon andState:blinkAnimationState_off];
         switch (playerInput) {
             case playerColor_red:
                 [iconTemp setImage:[UIImage imageNamed:@"circle_foot_red"]];
@@ -959,9 +938,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             case playerColor_yellow:
                 [iconTemp setImage:[UIImage imageNamed:@"circle_foot_yellow"]];
                 break;
-//            case playerColor_blue:
-//                [iconTemp setImage:[UIImage imageNamed:@"circle_foot_blue"]];
-//                break;
+                //            case playerColor_blue:
+                //                [iconTemp setImage:[UIImage imageNamed:@"circle_foot_blue"]];
+                //                break;
             case playerColor_green:
                 [iconTemp setImage:[UIImage imageNamed:@"circle_foot_green"]];
                 break;
@@ -1021,9 +1000,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             case playerColor_yellow:
                 [iconTemp setImage:[UIImage imageNamed:@"arrow_foot_yellow"]];
                 break;
-//            case playerColor_blue:
-//                [iconTemp setImage:[UIImage imageNamed:@"arrow_foot_blue"]];
-//                break;
+                //            case playerColor_blue:
+                //                [iconTemp setImage:[UIImage imageNamed:@"arrow_foot_blue"]];
+                //                break;
             case playerColor_green:
                 [iconTemp setImage:[UIImage imageNamed:@"arrow_foot_green"]];
                 break;
@@ -1087,15 +1066,15 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 break;
         }
         if(stateInput==2){
-            [self blinkAnimationFor:blinkAnimationType_icon andFocus:positionInput andState:blinkAnimationState_on];
+            [self blinkAnimationFor:blinkAnimationType_icon andState:blinkAnimationState_on];
         }
         else{
-            [self blinkAnimationFor:blinkAnimationType_icon andFocus:positionInput andState:blinkAnimationState_off];
+            [self blinkAnimationFor:blinkAnimationType_icon andState:blinkAnimationState_off];
         }
         
-
+        
     }
-
+    
 }
 
 //延遲之後要觸發哪種Event
@@ -1133,9 +1112,29 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             [self showMoiveAndMusic:movieAndMusicState_movieSelect andSelectedView:UNIMPORTANT];
             break;
             
+        case delayTimerEventType_video_selected:
+            //$$廣播給其他人，只有andSelectedView是傳這台self.viewNumber
+            //%%
+            
+            [self showMoiveAndMusic:movieAndMusicState_movieInitialization andSelectedView:self.viewNumber];
+
+            break;
+            
         case delayTimerEventType_music://
             //$$廣播給所有人
             [self showMoiveAndMusic:movieAndMusicState_musicSelect andSelectedView:UNIMPORTANT];
+            break;
+            
+        case delayTimerEventType_music_selected:
+            //$$廣播給其他人，只有andSelectedView是傳這台self.viewNumber
+            //%%
+            
+            [self showMoiveAndMusic:movieAndMusicState_musicInitialization andSelectedView:self.viewNumber];
+            
+            break;
+            
+        case delayTimerEventType_game:
+            [self showPogAndSelectedView:UNIMPORTANT];
             break;
             
         default:
@@ -1147,67 +1146,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     //[timer invalidate]; //停止 Timer
 }
 
--(void)blinkArrayAdderWithArray:(NSArray*)arrayInput andRect:(CGRect)rectInput andType:(blinkAnimationType)typeInput{//單純用來簡化加入照片的blink時的程序
-    
-    
-    
-    UIImageView *image_blink_animation;
-    image_blink_animation = [UIImageView alloc];
-    
-    [image_blink_animation initWithFrame:rectInput];
-    image_blink_animation.animationImages = arrayInput;//動畫的array
-    image_blink_animation.animationDuration = 1;//動畫時間
-    image_blink_animation.animationRepeatCount = 0;//播幾次。0表無限
-    [image_blink_animation stopAnimating];//先暫停，之後點到步數再亮
-    switch (typeInput) {
-        case blinkAnimationType_icon:
-            self.image_icon_blink=image_blink_animation;
-            break;
-        case blinkAnimationType_photo:
-            switch (self.viewNumber) {
-                case 1:
-                    image_blink_animation.transform=CGAffineTransformMakeScale(-1, 1);
-                    break;
-                case 2:
-                    image_blink_animation.transform=CGAffineTransformMakeScale(-1, -1);
-                    break;
-                case 3:
-                    image_blink_animation.transform=CGAffineTransformMakeScale(1, -1);
-                    break;
-                case 0:
-                default:
-                    break;
-            }
-            [self.image_photo_blink addObject:image_blink_animation];
-            break;
-        case blinkAnimationType_questionCard_1:
-            [self.image_questionCard_blink addObject:image_blink_animation];
-            break;
-        case blinkAnimationType_veryGood:
-            [self.imageView_veryGood addObject:image_blink_animation];
-            break;
-        case blinkAnimationType_pogPaperTorn:
-            image_blink_animation.animationRepeatCount = 1;//只播一次
-            self.imageView_pogPaperTorn=image_blink_animation;
-            break;
-        default:
-            break;
-    }
-    
-    [self.view addSubview:image_blink_animation];
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
-    appDelegate=(HPAppDelegate *)[[UIApplication sharedApplication]delegate];
-    session = appDelegate.gkSession;
-    session.delegate = self;
-    [session setDataReceiveHandler:self withContext:nil];
-    session.available = YES;
-    viewDidLoadHandoff = YES;
-    hitPhotoFromRemote = NO;
-    
     int i,j;
     
     //初始化gameState
@@ -1655,33 +1595,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     [self addButtonWithImage:@"questionCard_wrong_normal" andRect:rectTemp_X andTag:tag_button_questionCard_wrong andType:buttonType_questionCard];
     
     
-    
-    
-    //問題卡的閃光
-    //閃光array的順序是：0:白，1~4:紅黃綠橘
-    self.image_questionCard_blink=[[NSMutableArray alloc] initWithCapacity:5];//array一定要初始化，不然很容易產生de不出來的bug
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"questionCard_light_W"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:rectTemp
-                           andType:blinkAnimationType_questionCard_1];
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"questionCard_light_R"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:rectTemp
-                           andType:blinkAnimationType_questionCard_1];
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"questionCard_light_Y"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:rectTemp
-                           andType:blinkAnimationType_questionCard_1];
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"questionCard_light_G"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:rectTemp
-                           andType:blinkAnimationType_questionCard_1];
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"questionCard_light_O"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:rectTemp
-                           andType:blinkAnimationType_questionCard_1];
-    
-    
+
     
     //影片的最後面的背景 + ㄤ仔鑣出現的木頭桌
     self.imageView_movie_background_color=[[UIImageView alloc] initWithImage:[self.backgroundImageList objectAtIndex:1]];
@@ -1709,6 +1623,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     //影片的thumbnail
     self.movieThumbnailButton = [[UIButton alloc] init];
     [self.movieThumbnailButton setHidden:YES];
+    [self.movieThumbnailButton addTarget:self action:@selector(movieButtonPressed) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:self.movieThumbnailButton];
     
     //音樂的播放器
@@ -1717,6 +1632,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     NSURL *soundResourceUrl=[[NSURL alloc] initFileURLWithPath:soundResourcePath];
     musicPlayer=[[AVAudioPlayer alloc] initWithContentsOfURL:soundResourceUrl error:nil];
     [musicPlayer prepareToPlay];
+    musicPlayer.delegate=self;
     
     
     //廉幕跟下面那條
@@ -1724,6 +1640,16 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     self.imageView_movie_background.hidden=YES;
     [self.imageView_movie_background setFrame:CGRectMake(0, 0, 768, 1024)];
     [self.view addSubview:self.imageView_movie_background];
+    
+    //$$
+    //隱形的按鈕，左上右下分別有一個。我懶得在做判斷哪個是哪個了，反正應該不會有人按錯
+    self.movieTransparentButton=[[NSMutableArray alloc] initWithCapacity:2];
+
+    
+    [self addButtonWithImage:@"transparent" andRect:CGRectMake(23, 78, 257, 257) andTag:UNIMPORTANT andType:buttonType_movieMusicTransparent];
+    [self addButtonWithImage:@"transparent" andRect:CGRectMake(487, 687, 257, 257) andTag:UNIMPORTANT andType:buttonType_movieMusicTransparent];
+    
+    
     
     
     //歌名
@@ -1779,22 +1705,55 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     }
     
     
+
+    
+    
+    
+    
     if(self.viewNumber==3){
-        //先加進三張會飛進來的牌
+        //先加進六張會飛進來的牌
         self.imageView_pogFlyIn=[[NSMutableArray alloc] initWithCapacity:6];
         self.pogSheetFlyIn=[[NSMutableArray alloc] initWithCapacity:6];//
         HPPrimitiveType *primitiveTemp;
+        
+        self.imageView_pogQuestion=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"pog_question_0"]];//##之後要改成隨機。但總之應該只有viewNumber為3那台有機會使用到這個ImageView
+        [self.imageView_pogQuestion setHidden:YES];
+        [self.view addSubview:self.imageView_pogQuestion];
+        
+        UIImageView *imageViewTemp;
         for(i=0;i<=5;i++){
-            [self.imageView_pogFlyIn addObject:[[UIImageView alloc] initWithImage:[UIImage imageNamed:[NSString stringWithFormat:@"transparent"]]]];
-            [self.view addSubview:[self.imageView_pogFlyIn objectAtIndex:i]];
-            
+            imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:[NSString stringWithFormat:@"pog_sheet_1"]]];
+            switch (i) {
+                case 0:
+                    imageViewTemp.frame=CGRectMake(20, 13, 344, 340);
+                    break;
+                case 1:
+                    imageViewTemp.frame=CGRectMake(212, 13, 344, 340);
+                    break;
+                case 2:
+                    imageViewTemp.frame=CGRectMake(429, 13, 344, 340);
+                    break;
+                case 3:
+                    imageViewTemp.frame=CGRectMake(8, 298, 344, 340);
+                    break;
+                case 4:
+                    imageViewTemp.frame=CGRectMake(200, 298, 344, 340);
+                    break;
+                case 5:
+                    imageViewTemp.frame=CGRectMake(417, 298, 344, 340);
+                    break;
+                default:
+                    break;
+            }
+            imageViewTemp.hidden=YES;
+            [self.view addSubview:imageViewTemp];
+            [self.imageView_pogFlyIn addObject:imageViewTemp];
+
             primitiveTemp=[[HPPrimitiveType alloc] init];
             primitiveTemp.Integer=999;
             [self.pogSheetFlyIn addObject:primitiveTemp];
         }
-        self.imageView_pogQuestion=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"pog_question_0"]];//##之後要改成隨機。但總之應該只有viewNumber為3那台有機會使用到這個ImageView
-        [self.imageView_pogQuestion setHidden:YES];
-        [self.view addSubview:self.imageView_pogQuestion];
+
     }else{
         //ㄤ仔鑣基礎
         self.button_pogPaper=[[NSMutableArray alloc] initWithCapacity:3];//0,1:兩個鑣 2:原紙
@@ -1803,6 +1762,20 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         [self addButtonWithImage:[NSString stringWithFormat:@"pog_sheet_%d",self.viewNumber*2] andRect:CGRectMake(202, 139, 391, 387) andTag:tag_button_pogUp andType:buttonType_pogPaper];
         [self addButtonWithImage:[NSString stringWithFormat:@"pog_sheet_%d",(self.viewNumber*2+1)] andRect:CGRectMake(202, 574, 391, 387) andTag:tag_button_pogDown andType:buttonType_pogPaper];
         
+        
+        //ㄤ仔標的兩個閃光
+        self.imageView_blink_pog=[[NSMutableArray alloc] initWithCapacity:2];
+        
+        [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                        [UIImage imageNamed:@"pogBlink"],[UIImage imageNamed:@"transparent"],nil]
+                               andRect:CGRectMake(202, 139, 391, 387)
+                               andType:blinkAnimationType_pog];
+        
+        [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                        [UIImage imageNamed:@"pogBlink"],[UIImage imageNamed:@"transparent"],nil]
+                               andRect:CGRectMake(202, 574, 391, 387)
+                               andType:blinkAnimationType_pog];
+
         
         [self addButtonWithImage:@"pog_paper_0" andRect:CGRectMake(0, 0, 768, 1024) andTag:tag_button_pogPaper andType:buttonType_pogPaper];
         
@@ -1819,6 +1792,37 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         
         
     }
+    
+    
+    
+    //$$改了位置
+    //問題卡的閃光  //頗萬用
+    //閃光array的順序是：0:白，1~4:紅黃綠橘
+    self.image_questionCard_blink=[[NSMutableArray alloc] initWithCapacity:5];//array一定要初始化，不然很容易產生de不出來的bug
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"questionCard_light_W"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:rectTemp
+                           andType:blinkAnimationType_circleWithoutColor];
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"questionCard_light_R"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:rectTemp
+                           andType:blinkAnimationType_circleWithoutColor];
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"questionCard_light_Y"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:rectTemp
+                           andType:blinkAnimationType_circleWithoutColor];
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"questionCard_light_G"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:rectTemp
+                           andType:blinkAnimationType_circleWithoutColor];
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"questionCard_light_O"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:rectTemp
+                           andType:blinkAnimationType_circleWithoutColor];
+    
+    
+
+    
     
     
     
@@ -1890,6 +1894,21 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     }
     
     
+    
+    //TEST
+    [self addButtonWithImage:@"back_to_map" andRect:CGRectMake(400,600, 97, 44) andTag:tag_button_toolbar_0_map andType:buttonType_toolbar_function];
+    UIButton *button_toolbar_number_temp = [UIButton buttonWithType:UIButtonTypeCustom];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    [self addButtonWithImage:@"button_1_dark" andRect:CGRectMake(400,700, 97, 44) andTag:tag_button_toolbar_number_1 andType:buttonType_toolbar_number];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    [self.button_toolbar_number addObject:button_toolbar_number_temp];
+    //TESTEND
+
+    
+    
     //TEST
     [self addButtonWithImage:@"button_1_dark" andRect:CGRectMake(609,900, 97, 44) andTag:tag_button_test1 andType:buttonType_TEST];
     [self addButtonWithImage:@"button_2_dark" andRect:CGRectMake(498,900, 97, 44) andTag:tag_button_test2 andType:buttonType_TEST];
@@ -1899,35 +1918,217 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     [self addButtonWithImage:@"button_6_dark" andRect:CGRectMake(60,900, 97, 44) andTag:tag_button_test6 andType:buttonType_TEST];
     //TESTEND
     
+    
+    //TEST
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+    pathAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
+    pathAnimation.duration = 0.5f;
+    pathAnimation.calculationMode = kCAAnimationCubic;
+    pathAnimation.fillMode = kCAFillModeForwards;
+    pathAnimation.removedOnCompletion = NO;
+
+    
+    
+    UIImageView *TESTimageViewTemp;
+    TESTimageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:[NSString stringWithFormat:@"pog_sheet_1"]]];
+    TESTimageViewTemp.frame=CGRectMake(20, 13, 344, 340);
+    [self.view addSubview:TESTimageViewTemp];
+    
+    
+    [UIView beginAnimations:nil context:NULL];
+    [UIView setAnimationDuration:1.0f];
+    [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+    [UIView setAnimationBeginsFromCurrentState:YES];
+    
+    // The transform matrix
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(429, 13);
+    TESTimageViewTemp.transform = transform;
+    
+    // Commit the changes
+    [UIView commitAnimations];
+    
+    
+    
+    
+    // 位移A
+    
+//    //在做位移時，他的定址會以圖片中心為準，所以要加到中心的一半
+//    CGMutablePathRef pointPath = CGPathCreateMutable();
+//    
+//    CGPathMoveToPoint(pointPath, NULL,TESTimageViewTemp.frame.origin.x+TESTimageViewTemp.frame.size.width/2,TESTimageViewTemp.frame.origin.y+TESTimageViewTemp.frame.size.height/2);//原先的point
+//    
+//    CGPathAddLineToPoint(pointPath, NULL,429+TESTimageViewTemp.frame.size.width/2,13+TESTimageViewTemp.frame.size.height/2);//要到的point
+//    pathAnimation.path = pointPath;
+//    CGPathRelease(pointPath);
+//    [TESTimageViewTemp.layer addAnimation:pathAnimation forKey:@"pathAnimation"];
+
+
+    
+    
+    
+    
+    
+//    TESTimageViewTemp.frame=CGRectMake(newImageViewX, newImageViewY, tempImageView.frame.size.width, tempImageView.frame.size.height);
+    
+    
+    //TESTEND
+
+    
+    
     //load最後，才進行棋子擺放
     [self playerHandoff];
     
-    viewDidLoadHandoff = NO;
     
     
+    
 }
 
--(void)movieButtonPressed{
-    [self showMoiveAndMusic:movieAndMusicState_movieInitialization andSelectedView:self.viewNumber];
-    //$$廣播給其他人，只有selectedView是self.viewNumber
+-(void)showPogAndSelectedView:(int)selectedPog{
+    int i;
+    if(selectedPog==EXIT){
+        self.pogPoked=NO;//初始化，自己沒被戳過
+        [self.imageView_movie_background_color setHidden:YES];
+        if(self.viewNumber==3){//問題卡
+            [self.imageView_pogQuestion setHidden:YES];
+            for(i=0;i<=5;i++){
+                [[self.imageView_pogFlyIn objectAtIndex:i] setHidden:YES];
+            }
+            
+        }else{//腌仔鑣
+            for(i=0;i<=2;i++){
+                [[self.button_pogPaper objectAtIndex:i] setHidden:YES];
+            }
+            [self blinkAnimationFor:blinkAnimationType_pog andState:blinkAnimationState_off];
+        }
+    }else{
+        switch (self.gameState) {
+            case gameState_pogInitialization://初始化問題卡跟戳戳樂
+                self.pogPoked=NO;//初始化，自己沒被戳過
+                [self backgroundColorReset:2];//讀木頭桌子
+                [self.imageView_movie_background_color setHidden:NO];
+                if(self.viewNumber==3){//問題卡
+                    [self.imageView_pogQuestion setHidden:NO];
+                    self.gameState=gameState_pogDisable;
+                    
+                    self.pogSheetFlyInNumber=0;
+                    for(i=0;i<=5;i++){
+                        [[self.imageView_pogFlyIn objectAtIndex:i] setHidden:YES];
+                    }
+                    
+                }else{//腌仔鑣
+                    for(i=0;i<=2;i++){
+                        [[self.button_pogPaper objectAtIndex:i] setHidden:NO];
+                    }
+                    self.gameState=gameState_pogAvaliable;
+                }
+                break;
+                
+            case gameState_pogDisable://讓戳戳樂不能戳or戳的時候沒有用
+                if(self.viewNumber==3){//問題卡
+                }else{//腌仔鑣
+                    if(!self.pogPoked){
+                        [self.questionCard_black setHidden:NO];//還沒被戳過的話才暗掉
+                    }
+                }
+                break;
+                
+            case gameState_pogEnable://讓戳戳樂可以戳
+                if(self.viewNumber==3){//問題卡不用更新
+                }else{//腌仔鑣
+                    if(!self.pogPoked){
+                        [self.questionCard_black setHidden:YES];//還沒被戳過才需要再亮起來
+                        
+                    }
+                }
+                break;
+                
+            case gameState_pogAvaliable://戳戳樂可以戳的時候，戳了。只有ㄤ仔標有這個state
+                if(!self.pogPoked){//沒戳過，播放戳的動畫
+                    [[self.button_pogPaper objectAtIndex:2] setHidden:YES];
+                    [self.imageView_pogPaperTorn startAnimating];
+                    self.pogPoked=true;
+                    //                $$在這邊呼叫其他台的
+                    //                self.gameState=gameState_pogDisable;
+                    //                [self showPogAndSelectedView:UNIMPORTANT];
+                    //                    讓其他台暗掉不能被戳
+                    [self blinkAnimationFor:blinkAnimationType_pog andState:blinkAnimationState_on];
+                    
+                }else{//戳過了，接下來就可以選上面或下面
+                    HPPrimitiveType *primitiveTemp=[self.pogSheetMapping objectAtIndex:(selectedPog+self.viewNumber*2)];
+                    if(primitiveTemp.Integer==0){
+                        //##飛起來再掉下去
+                        NSLog(@"飛起來再掉下去");
+                    }else if (primitiveTemp.Integer==1){
+                        //##飛過去
+                        NSLog(@"飛fly~");
+                        //                $$在這邊呼叫viewNumber=3的
+                        //                self.gameState=gameState_pogFlyIn;
+                        //                [self showPogAndSelectedView:(selectedPog+self.viewNumber*2)];
+                        //                    讓問題卡那台，有人飛進去
+                        //                    這個一定要在這裡call~
+                        
+                        [[self.button_pogPaper objectAtIndex:selectedPog] setHidden:YES];
+                        primitiveTemp.Integer=2;
+                        [self blinkAnimationFor:blinkAnimationType_pog andState:blinkAnimationState_on];//再重新讀取
+                        //                $$在這邊呼叫其他台的
+                        //                self.gameState=gameState_pogEnable;
+                        //                [self showPogAndSelectedView:UNIMPORTANT];
+                        //                    讓其他台可以再被戳
+                        
+                        
+                        
+                    }else if(primitiveTemp.Integer==2){//被按過了就消失了，那就按不到
+                    }
+                }
+                break;
+                
+            case gameState_pogFlyIn://問題卡被飛進ㄤ仔鑣(只有問題卡有這個state，而且是被別人呼叫的，之後自己回到disable)
+                if(self.viewNumber==3){
+                    //這邊傳進來的selectedPog是完整的值(0~5)
+                    UIImageView *imageViewTemp;
+                    HPPrimitiveType *primitiveTemp=[self.pogSheetMapping objectAtIndex:selectedPog];
+                    if(primitiveTemp.Integer==1){//如果是正確的而且還沒有飛過來過
+                        //##飛進來ㄅ動畫
+    //                    pogSheetFlyInNumber表示現在是總共幾張圖飛進來了
+                        NSLog(@"FIN%d",self.pogSheetFlyInNumber);
+                        imageViewTemp=[self.imageView_pogFlyIn objectAtIndex:self.pogSheetFlyInNumber];
+                        [imageViewTemp setImage:[UIImage imageNamed:[NSString stringWithFormat:@"pog_sheet_%d",selectedPog]]];
+                        [imageViewTemp setHidden:NO];
+                        
+                        primitiveTemp.Integer=2;
+                        self.pogSheetFlyInNumber+=1;
+                    }
+                    self.gameState=gameState_pogDisable;
+                }
+                break;
+                
+            default:
+                break;
+        }
+    }
+
 }
 
--(void)musicButtonPressed{
-    [self showMoiveAndMusic:movieAndMusicState_musicInitialization andSelectedView:self.viewNumber];
-    //$$廣播給其他人，只有selectedView是self.viewNumber
-}
-
--(void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag//音樂停止時
-{
-    NSLog(@"fuckyou");
-}
--(void)stopAudio{
-    self.toolbarPlayerState=playerStateType_prepared;
-    if(self.viewNumber==0){
-        UIButton *buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
-        [buttonTemp setBackgroundImage:[UIImage imageNamed:@"play_and_pause"] forState:UIControlStateNormal];
+- (IBAction)pogButtonPressed:(id)sender{
+    //tag:
+    //tag_button_pogDown
+    UIButton *inputButton=(UIButton *)sender;
+    NSLog(@"%d",inputButton.tag);
+    if(self.gameState==gameState_pogAvaliable){
+        [self showPogAndSelectedView:inputButton.tag-tag_button_pogUp];
     }
 }
+
+
 -(void)showMoiveAndMusic:(movieAndMusicState)stateInput andSelectedView:(int)selectedViewNumber{
     
     NSString *movieResourcePath;//switch-case裡面沒辦法初始化變數，因為程式會不確定這個東西到底有沒有辦法被declared
@@ -1940,6 +2141,11 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         case movieAndMusicState_movieSelect://第一次初始化，給大家選
             self.movieOrMusicNow=movieOrMusic_movie;//告訴系統現在是進入影片模式->讓播放鍵可以知道要放影片還是音樂
             //##沒做廉幕拉開
+            
+            
+            //顯示隱形按鈕
+            [[self.movieTransparentButton objectAtIndex:0]setHidden:NO];
+            [[self.movieTransparentButton objectAtIndex:1]setHidden:NO];
             
             //設定背景、文字等
             
@@ -1974,7 +2180,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             [moviePlayer setContentURL:movieResourceUrl];
             [moviePlayer setShouldAutoplay:NO];
             
-            
+
             
             if(self.whoseTurn==playerColor_red||self.whoseTurn==playerColor_yellow){//##之後frame要在微調
                 
@@ -1985,6 +2191,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 
                 [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
                 [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
+                
+                [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:blinkAnimationState_movieMusicLeftUp];
                 
                 
             }else if(self.whoseTurn==playerColor_green||self.whoseTurn==playerColor_orange){
@@ -1997,6 +2205,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 
                 [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
                 [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
+                
+                [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:blinkAnimationState_movieMusicRightDown];
             }
             
             
@@ -2008,10 +2218,7 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             
             [self.movieThumbnailButton setBackgroundImage:[moviePlayer thumbnailImageAtTime:10.0
                                                                                  timeOption:MPMovieTimeOptionNearestKeyFrame] forState:UIControlStateNormal];
-            [self.movieThumbnailButton addTarget:self action:@selector(movieButtonPressed) forControlEvents:UIControlEventTouchUpInside];
-            
             [self.movieThumbnailButton setHidden:NO];
-            
             
             
             break;
@@ -2022,7 +2229,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             movieResourceUrl = [NSURL fileURLWithPath:movieResourcePath];
             [moviePlayer setContentURL:movieResourceUrl];
             [moviePlayer setShouldAutoplay:NO];
-            
+            //%%
+            [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopAudio)
                                                          name:MPMoviePlayerPlaybackDidFinishNotification
                                                        object:moviePlayer];
@@ -2111,7 +2319,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             [moviePlayer stop];
             [moviePlayer.view setHidden:YES];
             [self.imageView_movie_background_color setHidden:YES];
-            
+            [[self.movieTransparentButton objectAtIndex:0]setHidden:YES];
+            [[self.movieTransparentButton objectAtIndex:1]setHidden:YES];
             
             break;
             
@@ -2121,6 +2330,11 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             self.movieOrMusicNow=movieOrMusic_music;
             self.gameState=gameState_musicDisplayInitialization;
             //##沒做廉幕拉開
+            
+            //顯示隱形按鈕
+            [[self.movieTransparentButton objectAtIndex:0]setHidden:NO];
+            [[self.movieTransparentButton objectAtIndex:1]setHidden:NO];
+            
             
             //設定背景、文字等
             
@@ -2160,6 +2374,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
                 [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
                 
+                [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:blinkAnimationState_movieMusicLeftUp];
+                
                 
             }else if(self.whoseTurn==playerColor_green||self.whoseTurn==playerColor_orange){
                 
@@ -2171,6 +2387,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
                 
                 [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
                 [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
+                
+                [self blinkAnimationFor:blinkAnimationType_circleWithoutColor andState:blinkAnimationState_movieMusicRightDown];
             }
             
             
@@ -2194,6 +2412,8 @@ QuestionCardHitInfo questionCardHitInfoMessage;
         case movieAndMusicState_musicInitialization:
             self.movieMusicSelected=selectedViewNumber;//把「選到哪台」存起來
             //顯示廉幕跟文字
+            //%%
+            [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
             switch (self.movieMusicSelected) {//##第一次出現的名稱
                 case 0:
                     [self.movieLabel setText:@"夢のきざはし"];
@@ -2273,6 +2493,9 @@ QuestionCardHitInfo questionCardHitInfoMessage;
             break;
             
         case movieAndMusicState_musicStop:
+            //%%
+            [[self.movieTransparentButton objectAtIndex:0]setHidden:YES];
+            [[self.movieTransparentButton objectAtIndex:1]setHidden:YES];
             self.toolbarPlayerState=playerStateType_none;
             [musicPlayer stop];
             [self.imageView_movie_background_color setHidden:YES];
@@ -2288,138 +2511,139 @@ QuestionCardHitInfo questionCardHitInfoMessage;
     
 }
 
-
-
-- (void) receiveData:(NSData *)data fromPeer:(NSString *)peer inSession: (GKSession *)session context:(void *)context
-{
-    const char *incomingPacket = (const char*)[data bytes];
-    char messageType = incomingPacket[0];
-    switch (messageType) {
-        case gkMessageHandoffInfo:{
-            [self playerHandoffFromRemote];
-            NSLog(@"get handoff");
-            break;
-        }
-        case gkMessageNumHitInfo:{
-            numHitInfoMessage = *(NumHitInfo *)(incomingPacket + 1);
-            if (self.gameState==gameState_throwDice) {
-                self.stepToGo = numHitInfoMessage.nowPressedNumberTrs;
-                [self stepToGoDisplay];
-                [self resetAllIconInState:2 andFocusedPlayer:self.whoseTurn];
-            }
-            break;
-        }
-        case gkMessageHitPhotoInfo:{
-            hitPhotoFromRemote = YES;
-            hitPhotoInfoMessage = *(HitPhotoInfo *)(incomingPacket +1);
-            [self buttonHit_photo:0];
-            break;
-        }
-        case gkMessageToolbarHitInfo:{
-            toolbarHitInfoMessage = *(ToolbarHitInfo *)(incomingPacket + 1);
-            [self buttonHit_toolbar_functionFromRemote];
-            NSLog(@"toolbar");
-            break;
-        }
-        case gkMessageQuestionCardHit:{
-            questionCardHitInfoMessage = *(QuestionCardHitInfo *)(incomingPacket + 1);
-            self.questionCardSelectedNumber = questionCardHitInfoMessage.questionCardSelectedNumberTrs;
-            [NSTimer scheduledTimerWithTimeInterval:1
-                                             target:self
-                                           selector:@selector(timerEvent:)
-                                           userInfo:nil
-                                            repeats:NO];
-            break;
-        }
-           
-        case gkMessageQuestionCardRight:
-            sleep(3);
-            [self showChance:2 andTarget:UNIMPORTANT];
-            break;
-            
-        case gkMessageQuestionCardWrong:
-            [self showChance:2 andTarget:UNIMPORTANT];
-            break;
+-(void)movieButtonPressed{
+    if(self.delayTimerEvent==delayTimerEventType_video){//可以按的時候才給他按
+        //%%
+        //把自己的那個圓形的燈開亮一下
+        [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_on];
         
-            
-        default:{
-            NSString* msg = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-            NSLog(@"%@",msg);
-            
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle:msg
-                                                            message:msg
-                                                           delegate:nil
-                                                  cancelButtonTitle:@"OK"
-                                                  otherButtonTitles:nil];
-            [alert show];
-            break;
-        }
+        self.delayTimerEvent=delayTimerEventType_video_selected;
+        
+        [NSTimer scheduledTimerWithTimeInterval:1
+                                         target:self
+                                       selector:@selector(timerEvent:)
+                                       userInfo:nil
+                                        repeats:NO];
+    }
+    
+}
+-(void)musicButtonPressed{
+    //$$廣播給其他人，只有selectedView是self.viewNumber
+    //%%
+    if(self.delayTimerEvent==delayTimerEventType_music){//可以按的時候才給他按
+        //%%
+        //把自己的那個圓形的燈開亮一下
+        [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_on];
+        
+        self.delayTimerEvent=delayTimerEventType_music_selected;
+        
+        [NSTimer scheduledTimerWithTimeInterval:1
+                                         target:self
+                                       selector:@selector(timerEvent:)
+                                       userInfo:nil
+                                        repeats:NO];
+    }
+    
+    
+}
+-(void)stopAudio{
+    self.toolbarPlayerState=playerStateType_prepared;
+    if(self.viewNumber==0){
+        UIButton *buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
+        [buttonTemp setBackgroundImage:[UIImage imageNamed:@"play_and_pause"] forState:UIControlStateNormal];
     }
 }
 
-- (void) sendData:(NSData*)data useSession:(GKSession *)session
-{
-    [session sendDataToAllPeers:data withDataMode:GKSendDataReliable error:nil];
+-(void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag{//音樂停止時
+    NSLog(@"fuckyou");
 }
 
-- (void)session:(GKSession *)session peer:(NSString *)peerID didChangeState:(GKPeerConnectionState)state
-{
-	NSString* stateDesc;
-	if (state == GKPeerStateAvailable) stateDesc = @"GKPeerStateAvailable";
-	else if (state == GKPeerStateUnavailable) stateDesc = @"GKPeerStateUnavailable";
-	else if (state == GKPeerStateConnected) stateDesc =	@"GKPeerStateConnected";
-	else if (state == GKPeerStateDisconnected) stateDesc = @"GKPeerStateDisconnected";
-	else if (state == GKPeerStateConnecting) stateDesc = @"GKPeerStateConnecting";
-    NSLog(@"%s|%@|%@", __PRETTY_FUNCTION__, peerID, stateDesc);
-	
-	switch (state) {
-		case GKPeerStateAvailable:
-			NSLog(@"connecting to %@ ...", [session displayNameForPeer:peerID]);
-			[session connectToPeer:peerID withTimeout:10];
-			break;
-			
-		case GKPeerStateConnected:{
-            //            NSMutableData *data = [NSMutableData dataWithCapacity:1 + sizeof(int)];
-            //            messageType = gkIsServer;
-            //            [data appendBytes:&messageType length:1];
-            //            srand((unsigned)time(NULL));
-            //            intToBeCompared = rand();
-            //            [data appendBytes:&intToBeCompared length:sizeof(int)];
-            //            [self.gkSession sendDataToAllPeers:data withDataMode:GKSendDataReliable error:nil];
+//TEST 專門用來測試功能的button們
+- (IBAction)buttonHit_TEST:(id)sender{
+    UIButton *buttonTemp=(UIButton *)sender;
+    UIButton *inputButton=(UIButton *)sender;
+    NSLog(@"%d",inputButton.tag);
+    switch (inputButton.tag) {
+        case tag_button_test1:
+            [self showChance:3 andTarget:1];
+            break;
+        case tag_button_test2:
+            [self showChance:2 andTarget:UNIMPORTANT];
+            break;
+        case tag_button_test3:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:2];
+            break;
+        case tag_button_test4:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:3];
+            break;
+        case tag_button_test5:
+            switch (self.gameState) {
+                case gameState_photoDisplay:
+                    [self showPhoto:EXIT];//把照片關掉ㄅ
+                    [self playerHandoff];//換人了
+                    break;
+                case gameState_chanceDisplayOutside:
+                    [self showChance:EXIT andTarget:UNIMPORTANT];
+                    [self playerHandoff];//換人了
+                    break;
+                case gameState_movieDisplayPlaying:
+                    [self showMoiveAndMusic:movieAndMusicState_movieStop andSelectedView:UNIMPORTANT];
+                    [self playerHandoff];//換人了
+                    break;
+                case gameState_musicDisplayPlaying:
+                    [self showMoiveAndMusic:movieAndMusicState_musicStop andSelectedView:UNIMPORTANT];
+                    [self playerHandoff];//換人了
+                    break;
+                case gameState_pogDisable:
+                case gameState_pogAvaliable:
+                    
+                    [self showPogAndSelectedView:EXIT];
+                    [self playerHandoff];//換人了
+                    break;
+                default:
+                    break;
+            }
             
-//            if(![peers containsObject:peerID])
-//                [peers addObject:peerID];
-//            
-//            numPeers = [peers count] + 1;           //add self
-//            
-//            self.gkPeerID = peerID;
-//            appDelegate.gkSession = self.gkSession;
-//            NSLog(@"numPeers %d", numPeers);
-			break;
-        }
-			
-		case GKPeerStateDisconnected:
-			session = nil;
-		default:
-			break;
-	}
-	NSLog(@"---------------");
+            break;
+        case tag_button_test6:
+            
+            case playerStateType_prepared:
+                if(self.movieOrMusicNow==movieOrMusic_movie){
+                    //$$廣播
+                    [self showMoiveAndMusic:movieAndMusicState_moviePlay andSelectedView:UNIMPORTANT];
+                }else if(self.movieOrMusicNow==movieOrMusic_music){
+                    [self showMoiveAndMusic:movieAndMusicState_musicPlay andSelectedView:UNIMPORTANT];
+                }
+                break;
+            case playerStateType_play:
+                self.toolbarPlayerState=playerStateType_pause;
+                
+                if(self.movieOrMusicNow==movieOrMusic_movie){
+                    //$$廣播
+                    [moviePlayer pause];
+                }else if(self.movieOrMusicNow==movieOrMusic_music){
+                    [musicPlayer pause];
+                }
+                break;
+            case playerStateType_pause:
+                buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
+                self.toolbarPlayerState=playerStateType_play;
+                [buttonTemp setBackgroundImage:[UIImage imageNamed:@"play_press"] forState:UIControlStateNormal];
+                if(self.movieOrMusicNow==movieOrMusic_movie){
+                    //$$廣播
+                    [moviePlayer play];
+                }else if(self.movieOrMusicNow==movieOrMusic_music){
+                    [musicPlayer play];
+                }
+                break;
+            
+            break;
+        default:
+            break;
+    }
 }
-
-- (void)session:(GKSession *)session didReceiveConnectionRequestFromPeer:(NSString *)peerID
-{
-	NSLog(@"%s|%@", __PRETTY_FUNCTION__, peerID);
-	NSError* error = nil;
-	[session acceptConnectionFromPeer:peerID error:&error];
-	if (error) {
-		NSLog(@"%@", error);
-	}
-}
-
-- (IBAction)buttonHit_TEST:(id)sender
-{
-    NSLog(@"state now %d",self.gameState);
-}
-
+//TESTEND
 
 @end
