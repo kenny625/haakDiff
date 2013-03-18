@@ -40,35 +40,40 @@
             }
             break;
         case tag_button_toolbar_0_map:
-            switch (self.gameState) {
-                case gameState_photoDisplay:
-                    [self showPhoto:EXIT];//把照片關掉ㄅ
-                    [self playerHandoff];//換人了
-                    break;
-                case gameState_chanceDisplayOutside:
-                    [self showChance:EXIT andTarget:UNIMPORTANT];
-                    [self playerHandoff];//換人了
-                    break;
-                case gameState_movieDisplayPlaying:
-                    [self showMoiveAndMusic:movieAndMusicState_movieStop andSelectedView:UNIMPORTANT];
-                    [self playerHandoff];//換人了
-                    break;
-                case gameState_musicDisplayPlaying:
-                    [self showMoiveAndMusic:movieAndMusicState_musicStop andSelectedView:UNIMPORTANT];
-                    [self playerHandoff];//換人了
-                    break;
-                case gameState_pogDisable:
-                case gameState_pogAvaliable:
-                    
-                    [self showPogAndSelectedView:EXIT];
-                    [self playerHandoff];//換人了
-                    break;
-                default:
-                    break;
+            if(!self.mapLongPressActivated){//^^正常按地圖
+                switch (self.gameState) {
+                    case gameState_photoDisplay:
+                        [self showPhoto:0];//把照片關掉ㄅ
+                        [self playerHandoff];//換人了
+                        break;
+                    case gameState_chanceDisplayOutside:
+                        [self showChance:EXIT andTarget:UNIMPORTANT];
+                        [self playerHandoff];//換人了
+                        break;
+                    case gameState_movieDisplayPlaying:
+                        [self showMoiveAndMusic:movieAndMusicState_movieStop andSelectedView:UNIMPORTANT];
+                        [self playerHandoff];//換人了
+                        break;
+                    case gameState_musicDisplayPlaying:
+                        [self showMoiveAndMusic:movieAndMusicState_musicStop andSelectedView:UNIMPORTANT];
+                        [self playerHandoff];//換人了
+                        break;
+                    case gameState_pogDisable:
+                    case gameState_pogAvaliable:
+                        
+                        [self showPogAndSelectedView:EXIT];
+                        [self playerHandoff];//換人了
+                        break;
+                    default:
+                        break;
+                }
+            }else{//結束
+                NSLog(@"END");
             }
             break;
         case tag_button_toolbar_2_play:
             switch (self.toolbarPlayerState) {
+                
                 case playerStateType_prepared:
                     if(self.movieOrMusicNow==movieOrMusic_movie){
                         //$$廣播
@@ -79,6 +84,7 @@
                     buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
                     [buttonTemp setBackgroundImage:[UIImage imageNamed:@"play_press"] forState:UIControlStateNormal];
                     break;
+
                 case playerStateType_play:
                     buttonTemp=[self.button_toolbar_function objectAtIndex:(tag_button_toolbar_2_play-tag_button_toolbar_Base-1)];
                     self.toolbarPlayerState=playerStateType_pause;
@@ -104,6 +110,7 @@
                         [musicPlayer play];
                     }
                     break;
+                    
                 case playerStateType_none:
                 default:
                     break;
@@ -212,6 +219,8 @@
 //                        self.gameState=gameState_pogInitialization;
 //                        self.delayTimerEvent=delayTimerEventType_game;
 //                        break;
+
+                        
                         self.gameState=gameState_pogInitialization;
                         self.delayTimerEvent=delayTimerEventType_game;
                         break;
@@ -352,11 +361,13 @@
                 [[self.image_photo_blink objectAtIndex:j] stopAnimating];
             }
             if(blinkAnimationStateInput==blinkAnimationState_on){
+                int k;
                 if(self.gameState==gameState_moveForward){
                     if(self.toolbarLightOn){//全部燈光提示都要有的
                         for(j=presentPlayer.playerPosition+1;j<=presentPlayer.playerPosition+self.stepToGo;j++){//再把要的打開
-                            if(j>=(self.viewNumber*3)&&j<(self.viewNumber+1)*3){//在可視範圍中
-                                [[self.image_photo_blink objectAtIndex:(j%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
+                            k=j%12;//已經走一圈的狀況要重來
+                            if(k>=(self.viewNumber*3)&&k<(self.viewNumber+1)*3){//在可視範圍中
+                                [[self.image_photo_blink objectAtIndex:(k%3+self.whoseTurn*3)] startAnimating];//顏色正確的燈閃出來
                             }
                         }
                     }else{//只要下一步提示的
@@ -619,8 +630,14 @@
         //     //長的：663,502(1,2機:26,260)(0,3機：96,270)
         //     //橫的：830,679(1,2機:55,34)(0,3機：142,49)
         //     }else{
+        
+        //^^
+        HPPlayer *presentPlayer=[self.playerList objectAtIndex:self.whoseTurn];
+        HPPrimitiveType *prmitiveTypeTemp=[self.placePositionMapping objectAtIndex:presentPlayer.playerPosition];
+        NSLog(@"hoho,%d,%d",self.whoseTurn,prmitiveTypeTemp.Integer);
         [self.albumFrame setImage:self.albumFrame_horizontal];
-        [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:0]];
+        [self.albumPhoto setImage:[[self.imageLoadedList objectAtIndex:self.whoseTurn] objectAtIndex:prmitiveTypeTemp.Integer]];
+
         
         if(self.whoseTurn==playerColor_red||self.whoseTurn==playerColor_yellow){
             self.albumPhoto.transform=transform_90deg;//照片面向左邊的情況
@@ -638,7 +655,7 @@
         }
         
         //     }
-    }else if(stateInput==EXIT){//取消顯示ㄅ
+    }else if(stateInput==0){//取消顯示ㄅ
         [self.albumFrame setImage:[UIImage imageNamed:@"transparent"]];
         [self.albumPhoto setImage:[UIImage imageNamed:@"transparent"]];
     }
@@ -671,10 +688,27 @@
             if(inputButton.tag==tag_button_questionCard_correct){//答對了
                 //##播放你好棒
                 
+                
+                
+                
                 int i;
-                for(i=0;i<=4;i++){
-                    [[self.imageView_veryGood objectAtIndex:i] setHidden:NO];
-                }
+                
+                //^^
+                UIImageView *imTemp= [self.imageView_veryGood objectAtIndex:0];
+                [imTemp setImage:[self.image_veryGood_background objectAtIndex:self.whoseTurn]];
+                [[self.imageView_veryGood objectAtIndex:0] setHidden:NO];
+                [[self.imageView_veryGood objectAtIndex:1] setHidden:NO];
+
+                
+                //顯示你好棒
+                self.veryGoodAnimationFrameNumber=0;
+                [NSTimer scheduledTimerWithTimeInterval:1 //要用timer的話就用這行
+                                                 target:self
+                                               selector:@selector(customAnimation:)
+                                               userInfo:nil
+                                                repeats:YES];
+                
+                //TESTEND
                 
                 HPPrimitiveType *ptTemp=[self.questionCardSelected objectAtIndex:self.viewNumber];
                 ptTemp.Boolean=YES;//答對之後黑掉
@@ -685,7 +719,7 @@
                 }
                 
                 self.delayTimerEvent=delayTimerEventType_chanceVeryGood;
-                [NSTimer scheduledTimerWithTimeInterval:2 //要用timer的話就用這行
+                [NSTimer scheduledTimerWithTimeInterval:10 //要用timer的話就用這行
                                                  target:self
                                                selector:@selector(timerEvent:)
                                                userInfo:nil
@@ -777,6 +811,14 @@
     }
 }
 
+-(void)buttonHit_mapLong{
+    NSLog(@"YOU SOB");
+    self.mapLongPressActivated=YES;
+    UIButton *buttonTemp;
+    buttonTemp=[self.button_toolbar_function objectAtIndex:0];//把button的圖換成結束
+    [buttonTemp setBackgroundImage:[UIImage imageNamed:@"end_"] forState:UIControlStateNormal];
+    [buttonTemp setBackgroundImage:[UIImage imageNamed:@"end_"] forState:UIControlEventTouchDown];
+}
 -(void)addButtonWithImage:(NSString*)imageName andRect:(CGRect)rectInput andTag:(UIViewTag)tagInput andType:(buttonType)buttonTypeInput{
     
     //旋轉用trasform
@@ -786,7 +828,7 @@
     
     [buttonTemp setBackgroundImage:[UIImage imageNamed:imageName] forState:UIControlStateNormal];
     
-    
+        
     //四個數值表：錨定點x,錨定點y,圖寬,圖高
     
     buttonTemp.tag=tagInput;
@@ -804,9 +846,15 @@
         case buttonType_toolbar_function:
             [buttonTemp addTarget:self action:@selector(buttonHit_toolbar_function:) forControlEvents:UIControlEventTouchUpInside];
             switch (buttonTemp.tag) {//順調一下按下去的狀態
-                case tag_button_toolbar_0_map:
+                case tag_button_toolbar_0_map:{
                     [buttonTemp setBackgroundImage:[UIImage imageNamed:@"back_to_map_press"] forState:UIControlEventTouchDown];
+                    UILongPressGestureRecognizer *lpgr = [[UILongPressGestureRecognizer alloc]
+                                                          initWithTarget:self action:@selector(buttonHit_mapLong)];
+                    lpgr.minimumPressDuration = 1.0; //seconds
+                    [buttonTemp addGestureRecognizer:lpgr];
+
                     break;
+                }
                 case tag_button_toolbar_4_backward:
                     [buttonTemp setBackgroundImage:[UIImage imageNamed:@"backward_press"] forState:UIControlEventTouchDown];
                     break;
@@ -854,7 +902,7 @@
         //$$
         case buttonType_movieMusicTransparent://music跟movie同時都聽
             [buttonTemp addTarget:self action:@selector(movieButtonPressed) forControlEvents:UIControlEventTouchUpInside];
-            [buttonTemp addTarget:self action:@selector(musicButtonPressed ) forControlEvents:UIControlEventTouchUpInside];
+            [buttonTemp addTarget:self action:@selector(musicButtonPressed) forControlEvents:UIControlEventTouchUpInside];
             
             [self.movieTransparentButton addObject:buttonTemp];
             buttonTemp.hidden=YES;
@@ -1103,8 +1151,12 @@
             for(i=0;i<=4;i++){
                 [[self.imageView_veryGood objectAtIndex:i] setHidden:YES];
             }
+            //^^
+            if(self.gameState==gameState_pogDisable){}//
+            else{
             //$$廣播給所有人
             [self showChance:2  andTarget:UNIMPORTANT];
+            }
             break;
             
         case delayTimerEventType_video://
@@ -1136,7 +1188,11 @@
         case delayTimerEventType_game:
             [self showPogAndSelectedView:UNIMPORTANT];
             break;
-            
+        case delayTimerEventType_gameVeryGood:
+            for(i=0;i<=4;i++){
+                [[self.imageView_veryGood objectAtIndex:i] setHidden:YES];
+            }
+            break;
         default:
             break;
     }
@@ -1146,9 +1202,31 @@
     //[timer invalidate]; //停止 Timer
 }
 
+- (void)customAnimation:(NSTimer *)timer{
+
+    switch (self.veryGoodAnimationFrameNumber) {
+        case 2:
+            [[self.imageView_veryGood objectAtIndex:4] setHidden:NO];
+            break;
+        case 4:
+            [[self.imageView_veryGood objectAtIndex:2] setHidden:NO];
+            break;
+        case 5:
+            [[self.imageView_veryGood objectAtIndex:3] setHidden:NO];
+            break;
+        case 10:
+            [timer invalidate]; //停止 Timer            
+        default:
+            break;
+    }
+
+
+    self.veryGoodAnimationFrameNumber+=1;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    int i,j;
+    int i,j,k;
     
     //初始化gameState
     self.gameState=gameState_throwDice;
@@ -1159,6 +1237,9 @@
     self.overallRound=-1;
     self.toolbarPlayerState=playerStateType_none;
     self.stepToGo=0;
+    
+    //^^
+    self.mapLongPressActivated=NO;
     
     
     self.delayTimerEvent=delayTimerEventType_none;
@@ -1182,29 +1263,71 @@
     //把照片全部load進來
     self.imageLoadedList=[[NSMutableArray alloc] initWithCapacity:self.playerNumber];
     
-    for(i=0;i<=5;i++){
+    for(i=0;i<=3;i++){//這邊還沒有做管理者(因為台科沒給圖)^^
         //其實總共要有5(人)x8(地點)x4(張照片)=160張，先假設每個使用者每個地點的照片都一樣，所以先放20張，然後地點都是0(中間那碼數字)
         //      P_ 0 _  0    _  0 .png
         //每台只要load會顯示在自己機台的照片，即最後一碼。
         //引導者使用的預設照片放在5裡面，暫時用不到
-        NSMutableArray *secondLayer=[[NSMutableArray alloc] initWithCapacity:8];
-        //        for (j=0; j<=7; j++) { //這邊先沒有根據地點選進來
-        if(i!=4){//非管理者顯示的情況
-            //要成功切，除了圖片大小要對之外，frame也要配合
-            //JPG一定要寫完整附檔名
-            [secondLayer addObject:[UIImage imageNamed:[NSString stringWithFormat:@"P%d_0_%d.jpg",i,self.viewNumber]]];
-        }else{
-            [secondLayer addObject:[UIImage imageNamed:[NSString stringWithFormat:@"P%d_0_%d.jpg",i,self.viewNumber]]];
-        }
-        //        }
-        [self.imageLoadedList addObject:secondLayer];//這樣兩層是存：1.人 2.地點
+        NSMutableArray *secondLayer=[[NSMutableArray alloc] initWithCapacity:8];//八個地點
         
+        for(j=0;j<=7;j++){
+            //^^
+            [secondLayer addObject:[UIImage imageNamed:[NSString stringWithFormat:@"P%d_%d_%d",i,j,self.viewNumber]]];
+        }
+        
+        [self.imageLoadedList addObject:secondLayer];//這樣兩層是存：1.人 2.地點
         //長的：663,502
         //橫的：830,679
         
     }
     
-    
+    //人跟所在位置的對應
+    HPPrimitiveType *ptTemp;
+    self.placePositionMapping=[[NSMutableArray alloc] initWithCapacity:12];
+    for (i=0; i<=11; i++) {
+        ptTemp=[HPPrimitiveType alloc];
+        switch (i) {
+            case 0:
+                ptTemp.Integer=0;
+                break;
+            case 1:
+                ptTemp.Integer=0;
+                break;
+            case 2:
+                ptTemp.Integer=1;
+                break;
+            case 3:
+                ptTemp.Integer=2;
+                break;
+            case 4:
+                ptTemp.Integer=2;
+                break;
+            case 5:
+                ptTemp.Integer=3;
+                break;
+            case 6:
+                ptTemp.Integer=4;
+                break;
+            case 7:
+                ptTemp.Integer=4;
+                break;
+            case 8:
+                ptTemp.Integer=5;
+                break;
+            case 9:
+                ptTemp.Integer=6;
+                break;
+            case 10:
+                ptTemp.Integer=6;
+                break;
+            case 11:
+                ptTemp.Integer=7;
+                break;
+            default:
+                break;
+        }
+        [self.placePositionMapping addObject:ptTemp];
+    }
     
     
     
@@ -1531,38 +1654,7 @@
     [self.image_veryGood_background addObject:[UIImage imageNamed:@"veryGood_background_G"]];
     [self.image_veryGood_background addObject:[UIImage imageNamed:@"veryGood_background_O"]];
     
-    //你好棒的ImageView:
-    //0:底色
-    //1:shine
-    //2:main手
-    //3:燈泡
-    //4:燈閃閃
-    self.imageView_veryGood=[[NSMutableArray alloc] initWithCapacity:5];
-    UIImageView *imageViewTemp=[[UIImageView alloc] initWithImage:[self.image_veryGood_background objectAtIndex:0]];
-    imageViewTemp.frame=CGRectMake(0,0,768,1024);
-    [self.imageView_veryGood addObject:imageViewTemp];
-    
-    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_shine"]];
-    imageViewTemp.frame=CGRectMake(-488,-650,1754,2481);
-    [self.imageView_veryGood addObject:imageViewTemp];
-    
-    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_light_bulb"]];
-    imageViewTemp.frame=CGRectMake(56,180,666,663);//
-    [self.imageView_veryGood addObject:imageViewTemp];
-    
-    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
-                                    [UIImage imageNamed:@"veryGood_light_light"],[UIImage imageNamed:@"transparent"],nil]
-                           andRect:CGRectMake(56,180,666,663)
-                           andType:blinkAnimationType_veryGood];
-    [[self.imageView_veryGood objectAtIndex:3] startAnimating];
-    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_main"]];
-    imageViewTemp.frame=CGRectMake(119,243,540,538);
-    [self.imageView_veryGood addObject:imageViewTemp];
-    
-    for(i=0;i<=4;i++){
-        [self.view addSubview:[self.imageView_veryGood objectAtIndex:i]];
-        [[self.imageView_veryGood objectAtIndex:i] setHidden:YES];
-    }
+
     
     
     //問題卡的按鈕
@@ -1623,7 +1715,7 @@
     //影片的thumbnail
     self.movieThumbnailButton = [[UIButton alloc] init];
     [self.movieThumbnailButton setHidden:YES];
-    [self.movieThumbnailButton addTarget:self action:@selector(movieButtonPressed) forControlEvents:UIControlEventTouchUpInside];
+
     [self.view addSubview:self.movieThumbnailButton];
     
     //音樂的播放器
@@ -1656,7 +1748,10 @@
     self.movieLabel = [[UILabel alloc] init];
     [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
     [self.movieLabel setFrame:CGRectMake( 74, 328, 156, 593 )];
-    [self.movieLabel setFont:[UIFont fontWithName:@"Heiti TC" size:90.0f]];
+    [self.movieLabel setFont:[UIFont fontWithName:@"STHeitiTC-Medium" size:90.0f]];
+//    [self.movieLabel setFont:[UIFont fontWithName:@"DFYuan-W5-WIN-BF" size:90.0f]];
+//    [self.movieLabel setFont:[UIFont fontWithName:@"Heiti TC" size:90.0f]];
+    
     [self.movieLabel setTextColor: [UIColor blackColor]];
     [self.movieLabel setShadowColor:[UIColor lightGrayColor]];
     [self.movieLabel setTextAlignment:NSTextAlignmentCenter];
@@ -1664,22 +1759,6 @@
     [self.movieLabel setBackgroundColor:[UIColor clearColor]];
     [self.movieLabel setHidden:YES];
     [self.view addSubview: self.movieLabel];
-    
-    
-    //左右簾幕
-    self.imageView_movie_curtainLeft=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"musicMovie_curtainLeft"]];
-    self.imageView_movie_curtainLeft.frame=CGRectMake(0, -22, 768, 550);
-    self.imageView_movie_curtainLeft.hidden=YES;
-    [self.view addSubview:self.imageView_movie_curtainLeft];
-    
-    
-    
-    self.imageView_movie_curtainRight=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"musicMovie_curtainRight"]];
-    self.imageView_movie_curtainRight.frame=CGRectMake(0, 498, 768, 550);
-    self.imageView_movie_curtainRight.hidden=YES;
-    [self.view addSubview:self.imageView_movie_curtainRight];
-    
-    
     
     
     
@@ -1823,6 +1902,65 @@
     
 
     
+    //^^改了位置
+    //你好棒的ImageView:
+    //0:底色
+    //1:shine
+    //2:main手
+    //3:燈泡
+    //4:燈閃閃
+    self.imageView_veryGood=[[NSMutableArray alloc] initWithCapacity:5];
+    UIImageView *imageViewTemp=[[UIImageView alloc] initWithImage:[self.image_veryGood_background objectAtIndex:0]];
+    imageViewTemp.frame=CGRectMake(0,0,768,1024);
+    [self.imageView_veryGood addObject:imageViewTemp];
+    
+    
+    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_shine"]];
+
+    imageViewTemp.frame=CGRectMake(-500,-750,1754,2481);
+    
+    CABasicAnimation *fullRotationAnimation;
+    fullRotationAnimation = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
+    fullRotationAnimation.fromValue = [NSNumber numberWithFloat:0.0f];
+    fullRotationAnimation.toValue = [NSNumber numberWithFloat:2 * M_PI];
+    fullRotationAnimation.duration = 3;
+    fullRotationAnimation.repeatCount = 5000;
+    [imageViewTemp.layer addAnimation:fullRotationAnimation forKey:@"360"];
+    
+    [self.imageView_veryGood addObject:imageViewTemp];
+    
+    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_light_bulb"]];
+    imageViewTemp.frame=CGRectMake(56,180,666,663);//
+    [self.imageView_veryGood addObject:imageViewTemp];
+    
+    [self blinkArrayAdderWithArray:[NSArray arrayWithObjects:
+                                    [UIImage imageNamed:@"veryGood_light_light"],[UIImage imageNamed:@"transparent"],nil]
+                           andRect:CGRectMake(56,180,666,663)
+                           andType:blinkAnimationType_veryGood];
+    [[self.imageView_veryGood objectAtIndex:3] startAnimating];
+    imageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"veryGood_main"]];
+    imageViewTemp.frame=CGRectMake(119,243,540,538);
+    [self.imageView_veryGood addObject:imageViewTemp];
+    
+    for(i=0;i<=4;i++){
+        [self.view addSubview:[self.imageView_veryGood objectAtIndex:i]];
+        [[self.imageView_veryGood objectAtIndex:i] setHidden:YES];
+    }
+    
+    //^^換位置
+    //左右簾幕
+    self.imageView_movie_curtainLeft=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"musicMovie_curtainLeft"]];
+    self.imageView_movie_curtainLeft.frame=CGRectMake(0, -22, 768, 550);
+    self.imageView_movie_curtainLeft.hidden=YES;
+    [self.view addSubview:self.imageView_movie_curtainLeft];
+    
+    
+    
+    self.imageView_movie_curtainRight=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"musicMovie_curtainRight"]];
+    self.imageView_movie_curtainRight.frame=CGRectMake(0, 498, 768, 550);
+    self.imageView_movie_curtainRight.hidden=YES;
+    [self.view addSubview:self.imageView_movie_curtainRight];
+    
     
     
     
@@ -1925,36 +2063,12 @@
     
     
 
-    
-    
-    
-    
-    
-    pathAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
-    pathAnimation.duration = 0.5f;
-    pathAnimation.calculationMode = kCAAnimationCubic;
-    pathAnimation.fillMode = kCAFillModeForwards;
-    pathAnimation.removedOnCompletion = NO;
+//    pathAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
+//    pathAnimation.duration = 0.5f;
+//    pathAnimation.calculationMode = kCAAnimationCubic;
+//    pathAnimation.fillMode = kCAFillModeForwards;
+//    pathAnimation.removedOnCompletion = NO;
 
-    
-    
-    UIImageView *TESTimageViewTemp;
-    TESTimageViewTemp=[[UIImageView alloc] initWithImage:[UIImage imageNamed:[NSString stringWithFormat:@"pog_sheet_1"]]];
-    TESTimageViewTemp.frame=CGRectMake(20, 13, 344, 340);
-    [self.view addSubview:TESTimageViewTemp];
-    
-    
-    [UIView beginAnimations:nil context:NULL];
-    [UIView setAnimationDuration:1.0f];
-    [UIView setAnimationCurve:UIViewAnimationCurveLinear];
-    [UIView setAnimationBeginsFromCurrentState:YES];
-    
-    // The transform matrix
-    CGAffineTransform transform = CGAffineTransformMakeTranslation(429, 13);
-    TESTimageViewTemp.transform = transform;
-    
-    // Commit the changes
-    [UIView commitAnimations];
     
     
     
@@ -2066,7 +2180,7 @@
                     HPPrimitiveType *primitiveTemp=[self.pogSheetMapping objectAtIndex:(selectedPog+self.viewNumber*2)];
                     if(primitiveTemp.Integer==0){
                         //##飛起來再掉下去
-                        NSLog(@"飛起來再掉下去");
+                        NSLog(@"飛起來再掉下去");  
                     }else if (primitiveTemp.Integer==1){
                         //##飛過去
                         NSLog(@"飛fly~");
@@ -2106,6 +2220,32 @@
                         
                         primitiveTemp.Integer=2;
                         self.pogSheetFlyInNumber+=1;
+                        
+                        //^^
+                        UIImageView *imTemp= [self.imageView_veryGood objectAtIndex:0];
+                        [imTemp setImage:[self.image_veryGood_background objectAtIndex:self.whoseTurn]];
+                        [[self.imageView_veryGood objectAtIndex:0] setHidden:NO];
+                        [[self.imageView_veryGood objectAtIndex:1] setHidden:NO];
+                        
+                        
+                        //TEST
+                        
+                        //顯示你好棒
+                        self.veryGoodAnimationFrameNumber=0;
+                        [NSTimer scheduledTimerWithTimeInterval:1 //要用timer的話就用這行
+                                                         target:self
+                                                       selector:@selector(customAnimation:)
+                                                       userInfo:nil
+                                                        repeats:YES];
+                        
+                        self.delayTimerEvent=delayTimerEventType_chanceVeryGood;
+                        [NSTimer scheduledTimerWithTimeInterval:10 //要用timer的話就用這行
+                                                         target:self
+                                                       selector:@selector(timerEvent:)
+                                                       userInfo:nil
+                                                        repeats:NO];
+
+                        
                     }
                     self.gameState=gameState_pogDisable;
                 }
@@ -2137,10 +2277,62 @@
     NSString *soundResourcePath;
     NSURL *soundResourceUrl;
     
+    CATransition *applicationLoadViewIn;
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
     switch (stateInput) {
         case movieAndMusicState_movieSelect://第一次初始化，給大家選
             self.movieOrMusicNow=movieOrMusic_movie;//告訴系統現在是進入影片模式->讓播放鍵可以知道要放影片還是音樂
             //##沒做廉幕拉開
+            
+
+            //^^
+            //一定要用block包起來
+            [self.imageView_movie_curtainLeft setHidden:NO];
+            [self.imageView_movie_curtainRight setHidden:NO];
+            {
+                [UIView animateWithDuration:2.0
+                                 animations:^{
+                                        //要漸變的結果是怎樣
+                                        self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, -572);
+                                        self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 600);
+                                 }completion:^(BOOL finished){
+                                 }
+                 ];
+            }
+            
+            //用來blocking顯示的，因為他裡面有宣告自己的變數，所以一定要用block包在外面。
+//            [UIView animateWithDuration:2.0
+//                             animations:^{
+                                    //第一階段要播的
+//                             }
+//                             completion:^(BOOL finished){
+//                                 [UIView animateWithDuration:2.0
+//                                                  animations:^{
+                                                        //第二階段要播的
+//                                                  }
+//                                                  completion:^(BOOL finished){
+//                                                      [UIView animateWithDuration:2.0
+//                                                                       animations:^{
+                                                                            //第三階段要播的
+//                                                                       }
+//                                                                       completion:^(BOOL finished){
+//                                                                           
+//                                                                           ;
+//                                                                       }];
+//                                                      ;
+//                                                  }];
+//                                 
+//                             }];
+            //TESTEND
             
             
             //顯示隱形按鈕
@@ -2224,64 +2416,101 @@
             break;
             
         case movieAndMusicState_movieInitialization:
-            movieResourcePath = [[NSBundle mainBundle] pathForResource:[NSString stringWithFormat:@"movie_%d",selectedViewNumber] ofType:@"mp4"];//##讀取的影片內容之後應該會再篩選過
-            self.movieMusicSelected=selectedViewNumber;//把「選到哪台」存起來
-            movieResourceUrl = [NSURL fileURLWithPath:movieResourcePath];
-            [moviePlayer setContentURL:movieResourceUrl];
-            [moviePlayer setShouldAutoplay:NO];
-            //%%
-            [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
-            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopAudio)
-                                                         name:MPMoviePlayerPlaybackDidFinishNotification
-                                                       object:moviePlayer];
-            [moviePlayer setControlStyle:MPMovieControlStyleNone];
             
-            //顯示廉幕跟文字
-            switch (selectedViewNumber) {//##現在viewnumber跟選到的影片意思一樣，之後要再做一次mapping
-                case 0:
-                    [self.movieLabel setText:@"快樂的出航"];
-                    break;
-                case 1:
-                    [self.movieLabel setText:@"淚的小雨"];
-                    break;
-                case 2:
-                    [self.movieLabel setText:@"安平追想曲"];
-                    break;
-                case 3:
-                    [self.movieLabel setText:@"舞伴淚影"];
-                    break;
-                default:
-                    break;
+            //^^
+            //Animation執行結束之後才能開始做事情
+            
+            {
+                
+                [UIView animateWithDuration:2.0
+                     animations:^{
+                         //要漸變的結果是怎樣
+                         self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, 0);
+                         self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 0);
+                     }completion:^(BOOL finished){
+                         
+                        //^^
+                        self.toolbarPlayerState=playerStateType_none;
+                         NSString *movieResourcePath;//block裡面要在宣告一次囧...
+                         NSURL *movieResourceUrl;
+                         
+                         movieResourcePath = [[NSBundle mainBundle] pathForResource:[NSString stringWithFormat:@"movie_%d",selectedViewNumber] ofType:@"mp4"];//##讀取的影片內容之後應該會再篩選過
+                         self.movieMusicSelected=selectedViewNumber;//把「選到哪台」存起來
+                         movieResourceUrl = [NSURL fileURLWithPath:movieResourcePath];
+                         [moviePlayer setContentURL:movieResourceUrl];
+                         [moviePlayer setShouldAutoplay:NO];
+                         //%%
+                         [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
+                         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopAudio)
+                                                                      name:MPMoviePlayerPlaybackDidFinishNotification
+                                                                    object:moviePlayer];
+                         [moviePlayer setControlStyle:MPMovieControlStyleNone];
+                         
+                         //顯示廉幕跟文字
+                         switch (selectedViewNumber) {//##現在viewnumber跟選到的影片意思一樣，之後要再做一次mapping
+                             case 0:
+                                 [self.movieLabel setText:@"快樂的出航"];
+                                 break;
+                             case 1:
+                                 [self.movieLabel setText:@"淚的小雨"];
+                                 break;
+                             case 2:
+                                 [self.movieLabel setText:@"安平追想曲"];
+                                 break;
+                             case 3:
+                                 [self.movieLabel setText:@"舞伴淚影"];
+                                 break;
+                             default:
+                                 break;
+                         }
+                         
+                         if(self.viewNumber==1||self.viewNumber==2){//在左邊的情況
+                             
+                             [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0))];
+                             [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
+                             [self.movieLabel setFrame:CGRectMake( 74, 328, 156, 593 )];
+                             
+                             [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
+                             [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
+                             
+                             //                [moviePlayer.view setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
+                             //                [moviePlayer.view setFrame:  CGRectMake(226, 149, 542, 725)];
+                             
+                         }else if(self.viewNumber==0||self.viewNumber==3){
+                             [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(180.0))];
+                             
+                             [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
+                             [self.movieLabel setFrame:CGRectMake( 540, 115, 156, 593 )];
+                             
+                             [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
+                             [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
+                             
+                             //                [moviePlayer.view setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
+                             //                [moviePlayer.view setFrame:  CGRectMake(0, 149, 542, 725)];
+                         }
+                         [self.imageView_movie_background setFrame:CGRectMake(0, 0, 768, 1024)];
+                         self.toolbarPlayerState=playerStateType_prepared;
+                         
+                         
+                         //把隱形按鈕拔掉
+                         [[self.movieTransparentButton objectAtIndex:0]setHidden:YES];
+                         [[self.movieTransparentButton objectAtIndex:1]setHidden:YES];
+                         
+
+                          [UIView animateWithDuration:2.0
+                                   animations:^{
+                                       self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, -572);
+                                       self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 600);
+                                   }
+                                   completion:^(BOOL finished){
+
+                                       ;
+                                   }];
+                        }
+                 ];
             }
-            
-            if(self.viewNumber==1||self.viewNumber==2){//在左邊的情況
-                
-                [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0))];
-                [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
-                [self.movieLabel setFrame:CGRectMake( 74, 328, 156, 593 )];
-                
-                [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
-                [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
-                
-                //                [moviePlayer.view setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
-                //                [moviePlayer.view setFrame:  CGRectMake(226, 149, 542, 725)];
-                
-            }else if(self.viewNumber==0||self.viewNumber==3){
-                [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(180.0))];
-                
-                [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
-                [self.movieLabel setFrame:CGRectMake( 540, 115, 156, 593 )];
-                
-                [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
-                [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
-                
-                //                [moviePlayer.view setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
-                //                [moviePlayer.view setFrame:  CGRectMake(0, 149, 542, 725)];
-            }
-            [self.imageView_movie_background setFrame:CGRectMake(0, 0, 768, 1024)];
-            self.toolbarPlayerState=playerStateType_prepared;
-            break;
-            
+
+             break;
             
         case movieAndMusicState_moviePlay:
             self.gameState=gameState_movieDisplayPlaying;
@@ -2321,12 +2550,31 @@
             [self.imageView_movie_background_color setHidden:YES];
             [[self.movieTransparentButton objectAtIndex:0]setHidden:YES];
             [[self.movieTransparentButton objectAtIndex:1]setHidden:YES];
-            
+            //^^補上
+            [self.imageView_movie_curtainLeft setHidden:YES];
+            [self.imageView_movie_curtainRight setHidden:YES];
             break;
             
             
             
         case movieAndMusicState_musicSelect://音樂初始化，給大家選
+            
+            //^^
+            [self.imageView_movie_curtainLeft setHidden:NO];
+            [self.imageView_movie_curtainRight setHidden:NO];
+            self.toolbarPlayerState=playerStateType_none;
+            {
+                [UIView animateWithDuration:2.0
+                                 animations:^{
+                                     //要漸變的結果是怎樣
+                                     self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, -572);
+                                     self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 600);
+                                 }completion:^(BOOL finished){
+                                 }
+                 ];
+            }
+            
+            
             self.movieOrMusicNow=movieOrMusic_music;
             self.gameState=gameState_musicDisplayInitialization;
             //##沒做廉幕拉開
@@ -2401,7 +2649,6 @@
             [self.movieThumbnailButton setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"musicPhoto_%d",self.viewNumber]] forState:UIControlStateNormal];//##這邊應該是要填入音樂的圖
             
             
-            [self.movieThumbnailButton addTarget:self action:@selector(musicButtonPressed) forControlEvents:UIControlEventTouchUpInside];
             
             [self.movieThumbnailButton setHidden:NO];
             
@@ -2410,51 +2657,74 @@
             break;
             
         case movieAndMusicState_musicInitialization:
-            self.movieMusicSelected=selectedViewNumber;//把「選到哪台」存起來
-            //顯示廉幕跟文字
-            //%%
-            [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
-            switch (self.movieMusicSelected) {//##第一次出現的名稱
-                case 0:
-                    [self.movieLabel setText:@"夢のきざはし"];
-                    break;
-                case 1:
-                    [self.movieLabel setText:@"ゆきもよ"];
-                    break;
-                case 2:
-                    [self.movieLabel setText:@"Natsukage"];
-                    break;
-                case 3:
-                    [self.movieLabel setText:@"Laura theme"];
-                    break;
-                default:
-                    break;
+            {
+                [UIView animateWithDuration:2.0
+                     animations:^{
+                         //要漸變的結果是怎樣
+                         self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, 0);
+                         self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 0);
+                     }completion:^(BOOL finished){
+                
+                        self.movieMusicSelected=selectedViewNumber;//把「選到哪台」存起來
+                        //顯示廉幕跟文字
+                        //%%
+                        [self blinkAnimationFor:blinkAnimationType_circleWithColor andState:blinkAnimationState_off];
+                        switch (self.movieMusicSelected) {//##第一次出現的名稱
+                            case 0:
+                                [self.movieLabel setText:@"夢のきざはし"];
+                                break;
+                            case 1:
+                                [self.movieLabel setText:@"ゆきもよ"];
+                                break;
+                            case 2:
+                                [self.movieLabel setText:@"Natsukage"];
+                                break;
+                            case 3:
+                                [self.movieLabel setText:@"Laura theme"];
+                                break;
+                            default:
+                                break;
+                        }
+                        
+                        if(self.viewNumber==1||self.viewNumber==2){//在左邊的情況
+                            
+                            [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0))];
+                            [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
+                            [self.movieLabel setFrame:CGRectMake( 74, 328, 156, 593 )];
+                            
+                            [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
+                            [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
+                            
+                        }else if(self.viewNumber==0||self.viewNumber==3){
+                            [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(180.0))];
+                            
+                            [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
+                            [self.movieLabel setFrame:CGRectMake( 540, 115, 156, 593 )];
+                            
+                            [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
+                            [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
+                            
+                        }
+                        [self.imageView_movie_background setFrame:CGRectMake(0, 0, 768, 1024)];
+                        self.toolbarPlayerState=playerStateType_prepared;
+                        
+                        [self.movieThumbnailButton setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"musicPhoto_%d",self.movieMusicSelected]] forState:UIControlStateNormal];
+                        [[self.movieTransparentButton objectAtIndex:0]setHidden:YES];
+                        [[self.movieTransparentButton objectAtIndex:1]setHidden:YES];
+                         
+                         
+                         [UIView animateWithDuration:2.0
+                                          animations:^{
+                                              self.imageView_movie_curtainLeft.transform = CGAffineTransformMakeTranslation(0, -572);
+                                              self.imageView_movie_curtainRight.transform = CGAffineTransformMakeTranslation(0, 600);
+                                          }
+                                          completion:^(BOOL finished){
+                                              
+                                              ;
+                                          }];
+                         
+                 }];
             }
-            
-            if(self.viewNumber==1||self.viewNumber==2){//在左邊的情況
-                
-                [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(0.0))];
-                [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
-                [self.movieLabel setFrame:CGRectMake( 74, 328, 156, 593 )];
-                
-                [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(90.0))];
-                [self.movieThumbnailButton setFrame:  CGRectMake(226, 149, 542, 725)];
-                
-            }else if(self.viewNumber==0||self.viewNumber==3){
-                [self.imageView_movie_background setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(180.0))];
-                
-                [self.movieLabel setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
-                [self.movieLabel setFrame:CGRectMake( 540, 115, 156, 593 )];
-                
-                [self.movieThumbnailButton setTransform:CGAffineTransformRotate(CGAffineTransformIdentity,RADIANS(270.0))];
-                [self.movieThumbnailButton setFrame:  CGRectMake(0, 149, 542, 725)];
-                
-            }
-            [self.imageView_movie_background setFrame:CGRectMake(0, 0, 768, 1024)];
-            self.toolbarPlayerState=playerStateType_prepared;
-            
-            [self.movieThumbnailButton setBackgroundImage:[UIImage imageNamed:[NSString stringWithFormat:@"musicPhoto_%d",self.movieMusicSelected]] forState:UIControlStateNormal];
-            
             break;
             
         case movieAndMusicState_musicPlay:
@@ -2565,23 +2835,9 @@
     NSLog(@"%d",inputButton.tag);
     switch (inputButton.tag) {
         case tag_button_test1:
-            [self showChance:3 andTarget:1];
-            break;
-        case tag_button_test2:
-            [self showChance:2 andTarget:UNIMPORTANT];
-            break;
-        case tag_button_test3:
-            self.gameState=gameState_pogFlyIn;
-            [self showPogAndSelectedView:2];
-            break;
-        case tag_button_test4:
-            self.gameState=gameState_pogFlyIn;
-            [self showPogAndSelectedView:3];
-            break;
-        case tag_button_test5:
             switch (self.gameState) {
                 case gameState_photoDisplay:
-                    [self showPhoto:EXIT];//把照片關掉ㄅ
+                    [self showPhoto:0];//把照片關掉ㄅ
                     [self playerHandoff];//換人了
                     break;
                 case gameState_chanceDisplayOutside:
@@ -2605,7 +2861,23 @@
                 default:
                     break;
             }
-            
+            break;
+        case tag_button_test2:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:1];
+            break;
+            break;
+        case tag_button_test3:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:2];
+            break;
+        case tag_button_test4:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:3];
+            break;
+        case tag_button_test5:
+            self.gameState=gameState_pogFlyIn;
+            [self showPogAndSelectedView:UNIMPORTANT];
             break;
         case tag_button_test6:
             
